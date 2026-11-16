@@ -245,7 +245,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-3.5 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
             <Film className="w-5 h-5 text-white" />
@@ -265,10 +265,9 @@ export default function HomePage() {
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Header banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-3xl p-7 relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+          {/* Header section */}
+          <div className="pb-6 border-b border-slate-800/80">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1.5">
                 <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
                   <span>Quản lý dự án & thương hiệu</span>
@@ -407,86 +406,88 @@ export default function HomePage() {
                           </div>
                         </div>
 
-                        <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              setOpenMenuProjectId((prev) => (prev === p.id ? null : p.id));
-                            }}
-                            className={`p-1.5 rounded-lg transition ${
-                              openMenuProjectId === p.id
-                                ? "text-white bg-slate-800"
-                                : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
-                            }`}
-                            title="Tùy chọn"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-
-                          {openMenuProjectId === p.id && (
-                            <div
-                              className="absolute right-0 top-full mt-1.5 w-40 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-30 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+                        {(isOwner || canEdit) && (
+                          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
+                                setOpenMenuProjectId((prev) => (prev === p.id ? null : p.id));
                               }}
+                              className={`p-1.5 rounded-lg transition ${
+                                openMenuProjectId === p.id
+                                  ? "text-white bg-slate-800"
+                                  : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                              }`}
+                              title="Tùy chọn"
                             >
-                              {isOwner && (
-                                <>
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {openMenuProjectId === p.id && (
+                              <div
+                                className="absolute right-0 top-full mt-1.5 w-40 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-30 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                              >
+                                {isOwner && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setOpenMenuProjectId(null);
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setProjectToShare(p);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-600/20 flex items-center gap-2 transition"
+                                    >
+                                      <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+                                      <span>Chia sẻ dự án</span>
+                                    </button>
+                                    <div className="h-px bg-slate-800 my-1" />
+                                  </>
+                                )}
+
+                                {canEdit && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       setOpenMenuProjectId(null);
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      setProjectToShare(p);
+                                      handleOpenEditModal(p, e);
                                     }}
-                                    className="w-full px-3 py-2 text-left text-xs font-medium text-indigo-300 hover:text-white hover:bg-indigo-600/20 flex items-center gap-2 transition"
+                                    className="w-full px-3 py-2 text-left text-xs font-medium text-slate-300 hover:text-white hover:bg-indigo-600/20 flex items-center gap-2 transition"
                                   >
-                                    <Share2 className="w-3.5 h-3.5 text-indigo-400" />
-                                    <span>Chia sẻ dự án</span>
+                                    <Pencil className="w-3.5 h-3.5 text-indigo-400" />
+                                    <span>Sửa tên</span>
                                   </button>
-                                  <div className="h-px bg-slate-800 my-1" />
-                                </>
-                              )}
+                                )}
 
-                              {canEdit && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    setOpenMenuProjectId(null);
-                                    handleOpenEditModal(p, e);
-                                  }}
-                                  className="w-full px-3 py-2 text-left text-xs font-medium text-slate-300 hover:text-white hover:bg-indigo-600/20 flex items-center gap-2 transition"
-                                >
-                                  <Pencil className="w-3.5 h-3.5 text-indigo-400" />
-                                  <span>Sửa tên</span>
-                                </button>
-                              )}
-
-                              {isOwner && (
-                                <>
-                                  <div className="h-px bg-slate-800 my-1" />
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      setOpenMenuProjectId(null);
-                                      setProjectToDelete(p);
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-2 transition"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                                    <span>Xóa</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                                {isOwner && (
+                                  <>
+                                    <div className="h-px bg-slate-800 my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setOpenMenuProjectId(null);
+                                        setProjectToDelete(p);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-2 transition"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                                      <span>Xóa</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {p.description && (

@@ -355,7 +355,7 @@ export default function ShareProjectModal({
                                   }}
                                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-slate-800 transition group cursor-pointer"
                                 >
-                                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-rose-600 border border-indigo-400/30 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                                  <div className="w-7 h-7 rounded-full bg-indigo-600 border border-indigo-400/30 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                                     {initials}
                                   </div>
                                   <div className="min-w-0 flex-1">

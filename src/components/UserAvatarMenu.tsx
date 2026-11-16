@@ -105,7 +105,7 @@ export default function UserAvatarMenu({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 via-indigo-500 to-rose-500 border border-indigo-400/40 flex items-center justify-center text-white text-xs font-extrabold tracking-wider shadow-lg shadow-indigo-600/25 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer select-none"
+        className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/40 flex items-center justify-center text-white text-xs font-extrabold tracking-wider shadow-lg shadow-indigo-600/25 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer select-none"
         title={user ? `${user.name} (${user.email})` : "Tài khoản cá nhân"}
         aria-label="Menu tài khoản"
       >

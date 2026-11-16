@@ -1,7 +1,12 @@
 "use client";
-
+import GlobalSidebar from "@/components/GlobalSidebar";
 import IPhoneVideoTrimmer from "@/components/IPhoneVideoTrimmer";
+import {
+  PermissionGate,
+  ProjectAccessProvider,
+} from "@/components/PermissionGate";
 import PreviewPlayer916 from "@/components/PreviewPlayer916";
+import ShareProjectModal from "@/components/ShareProjectModal";
 import UserAvatarMenu from "@/components/UserAvatarMenu";
 import {
   extractGoogleDriveFileId,
@@ -25,10 +30,6 @@ import {
   ShotEdits,
   VoiceTrack,
 } from "@/types/lachvid";
-import {
-  PermissionGate,
-  ProjectAccessProvider,
-} from "@/components/PermissionGate";
 import JSZip from "jszip";
 import {
   AlertTriangle,
@@ -59,6 +60,7 @@ import {
   Link2,
   Loader2,
   Lock,
+  Menu,
   Mic,
   Music,
   Pause,
@@ -68,6 +70,7 @@ import {
   RotateCcw,
   Scissors,
   Search,
+  Share2,
   ShieldAlert,
   Shuffle,
   Sliders,
@@ -140,35 +143,85 @@ export default function StudioWorkspace({
   access,
 }: StudioWorkspaceProps) {
   const [accessState, setAccessState] = useState<ProjectAccessInfo | null>(
-    access || null
+    access || null,
   );
 
   const isOwner = Boolean(accessState?.isOwner);
 
-  const canViewSplit = isOwner || !accessState || Boolean(accessState.permissions.split?.enabled);
-  const canEditSplit = isOwner || !accessState || Boolean(accessState.permissions.split?.actions?.includes("edit"));
-  const canExportSplit = isOwner || !accessState || Boolean(accessState.permissions.split?.actions?.includes("export"));
+  const canViewSplit =
+    isOwner || !accessState || Boolean(accessState.permissions.split?.enabled);
+  const canEditSplit =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.split?.actions?.includes("edit"));
+  const canExportSplit =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.split?.actions?.includes("export"));
 
-  const canViewMix = isOwner || !accessState || Boolean(accessState.permissions.mix?.enabled);
-  const canEditMix = isOwner || !accessState || Boolean(accessState.permissions.mix?.actions?.includes("edit"));
-  const canExportMix = isOwner || !accessState || Boolean(accessState.permissions.mix?.actions?.includes("export"));
+  const canViewMix =
+    isOwner || !accessState || Boolean(accessState.permissions.mix?.enabled);
+  const canEditMix =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.mix?.actions?.includes("edit"));
+  const canExportMix =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.mix?.actions?.includes("export"));
 
-  const canViewHistory = isOwner || !accessState || Boolean(accessState.permissions.history?.enabled);
-  const canEditHistory = isOwner || !accessState || Boolean(accessState.permissions.history?.actions?.includes("edit"));
-  const canExportHistory = isOwner || !accessState || Boolean(accessState.permissions.history?.actions?.includes("export"));
+  const canViewHistory =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.history?.enabled);
+  const canEditHistory =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.history?.actions?.includes("edit"));
+  const canExportHistory =
+    isOwner ||
+    !accessState ||
+    Boolean(accessState.permissions.history?.actions?.includes("export"));
 
   const [currentProjectName, setCurrentProjectName] = useState<string>(
-    projectName || ""
+    projectName || "",
   );
   const [parentProjectIdState, setParentProjectIdState] = useState<string>(
-    parentProjectId || ""
+    parentProjectId || "",
   );
-  const [parentProjectNameState, setParentProjectNameState] = useState<string>("");
+  const [parentProjectNameState, setParentProjectNameState] =
+    useState<string>("");
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [siblingFolders, setSiblingFolders] = useState<
     Array<{ id: string; name: string }>
   >([]);
   const [showFolderSwitcher, setShowFolderSwitcher] = useState<boolean>(false);
   const folderSwitcherRef = useRef<HTMLDivElement | null>(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return (
+          window.localStorage.getItem("omnigen_sidebar_expanded") === "true"
+        );
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] =
+    useState<boolean>(false);
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarExpanded((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("omnigen_sidebar_expanded", String(next));
+      } catch {
+        // ignore localStorage errors
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!showFolderSwitcher) return;
@@ -242,13 +295,20 @@ export default function StudioWorkspace({
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [accessState, mainTab, canViewSplit, canViewMix, canViewHistory, setMainTab]);
+  }, [
+    accessState,
+    mainTab,
+    canViewSplit,
+    canViewMix,
+    canViewHistory,
+    setMainTab,
+  ]);
   const [historyFilterStatus, setHistoryFilterStatus] = useState<
     "all" | "unused" | "used"
   >("all");
   const [historySearchText, setHistorySearchText] = useState<string>("");
   const [historySortOrder, setHistorySortOrder] = useState<"desc" | "asc">(
-    "desc"
+    "desc",
   );
   const [historyPage, setHistoryPage] = useState<number>(1);
   const [historyPageSize, setHistoryPageSize] = useState<number>(10);
@@ -266,7 +326,7 @@ export default function StudioWorkspace({
   const [pyThreshold, setPyThreshold] = useState<number>(27.0);
   const [pyMinSceneLen, setPyMinSceneLen] = useState<number>(0.8);
   const [pyDetector, setPyDetector] = useState<"content" | "adaptive">(
-    "content"
+    "content",
   );
   const [isSlicing, setIsSlicing] = useState<boolean>(false);
   const [sourceBlobUrl, setSourceBlobUrl] = useState<string | null>(null);
@@ -299,12 +359,14 @@ export default function StudioWorkspace({
   });
   const [multiVoices, setMultiVoices] = useState<MultiVoiceItem[]>([]);
   const [selectedComposedId, setSelectedComposedId] = useState<string | null>(
-    null
+    null,
   );
   const [targetMixDuration, setTargetMixDuration] = useState<number>(20);
   const [targetMixCount, setTargetMixCount] = useState<number>(10);
   const [mixVoiceMode, setMixVoiceMode] = useState<"none" | "rotate">("rotate");
-  const [clipNamePrefix, setClipNamePrefix] = useState<string>(projectName || "");
+  const [clipNamePrefix, setClipNamePrefix] = useState<string>(
+    projectName || "",
+  );
   const [editingSlotCategory, setEditingSlotCategory] =
     useState<ShotCategory | null>(null);
   const [activeSlotFocusIndex, setActiveSlotFocusIndex] = useState<
@@ -456,7 +518,7 @@ export default function StudioWorkspace({
 
     if (driveHistoryCategoryFilter !== "all") {
       result = result.filter(
-        (it) => it.category === driveHistoryCategoryFilter
+        (it) => it.category === driveHistoryCategoryFilter,
       );
     }
 
@@ -492,18 +554,21 @@ export default function StudioWorkspace({
         type: "info" | "success" | "error" | "forbidden";
         title?: string;
         text: string;
-      } | null
+      } | null,
     ) => {
       if (!toast) return;
       const id = `toast_${Date.now()}_${Math.random()
         .toString(36)
         .slice(2, 7)}`;
       setToasts((prev) => [...prev, { id, ...toast }]);
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, toast.type === "forbidden" ? 7000 : 5000);
+      setTimeout(
+        () => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        },
+        toast.type === "forbidden" ? 7000 : 5000,
+      );
     },
-    []
+    [],
   );
 
   const removeToast = useCallback((id: string) => {
@@ -519,7 +584,7 @@ export default function StudioWorkspace({
         text: `Bạn không có quyền thực hiện thao tác này${detail}. Vui lòng liên hệ chủ dự án để được cấp quyền.`,
       });
     },
-    [addToast]
+    [addToast],
   );
 
   const authFetch = useCallback(
@@ -536,7 +601,7 @@ export default function StudioWorkspace({
       }
       return res;
     },
-    [notifyPermissionDenied]
+    [notifyPermissionDenied],
   );
 
   // Backwards-compatible alias so existing logic continues to work seamlessly
@@ -618,7 +683,7 @@ export default function StudioWorkspace({
 
         const fullDefaultPrefix = data.project?.parentProjectName
           ? `${data.project.parentProjectName} - ${data.project.name || ""}`
-          : (data.project?.name || "");
+          : data.project?.name || "";
 
         if (data.project?.settings) {
           const s = data.project.settings;
@@ -666,7 +731,7 @@ export default function StudioWorkspace({
           }
           if (data.state.diversityConfig?.targetOutputDuration) {
             setTargetMixDuration(
-              data.state.diversityConfig.targetOutputDuration
+              data.state.diversityConfig.targetOutputDuration,
             );
           }
         }
@@ -675,11 +740,11 @@ export default function StudioWorkspace({
 
     fetch(
       `/api/category-library?sessionId=${encodeURIComponent(
-        sid
+        sid,
       )}&projectId=${encodeURIComponent(projectId)}`,
       {
         headers: { "x-session-id": sid },
-      }
+      },
     )
       .then((r) => r.json())
       .then((data) => {
@@ -722,7 +787,14 @@ export default function StudioWorkspace({
         // ignore transient save error
       }
     },
-    [sessionId, projectId, targetMixDuration, targetMixCount, mixVoiceMode, clipNamePrefix]
+    [
+      sessionId,
+      projectId,
+      targetMixDuration,
+      targetMixCount,
+      mixVoiceMode,
+      clipNamePrefix,
+    ],
   );
 
   const persistProjectSettings = useCallback(
@@ -732,7 +804,7 @@ export default function StudioWorkspace({
         targetMixCount: number;
         mixVoiceMode: "none" | "rotate";
         clipNamePrefix: string;
-      }>
+      }>,
     ) => {
       if (!projectId) return;
       fetch(`/api/project/${projectId}`, {
@@ -749,7 +821,13 @@ export default function StudioWorkspace({
         }),
       }).catch(() => {});
     },
-    [projectId, targetMixDuration, targetMixCount, mixVoiceMode, clipNamePrefix]
+    [
+      projectId,
+      targetMixDuration,
+      targetMixCount,
+      mixVoiceMode,
+      clipNamePrefix,
+    ],
   );
 
   // Auto-detect and sync exact video duration from browser decoder for all category pool items
@@ -773,7 +851,7 @@ export default function StudioWorkspace({
             setCategoryPools((prev) => {
               const currentList = prev[cat] || [];
               const updated = currentList.map((it) =>
-                it.id === item.id ? { ...it, duration: exactDur } : it
+                it.id === item.id ? { ...it, duration: exactDur } : it,
               );
               return { ...prev, [cat]: updated };
             });
@@ -806,8 +884,8 @@ export default function StudioWorkspace({
         if (Math.abs(exactDur - voice.duration) > 0.05) {
           setMultiVoices((prev) =>
             prev.map((v) =>
-              v.id === voice.id ? { ...v, duration: exactDur } : v
-            )
+              v.id === voice.id ? { ...v, duration: exactDur } : v,
+            ),
           );
         }
       };
@@ -856,7 +934,7 @@ export default function StudioWorkspace({
         },
       };
     },
-    []
+    [],
   );
 
   const selectedShot = useMemo(() => {
@@ -914,7 +992,7 @@ export default function StudioWorkspace({
   const selectedVoiceTrack: VoiceTrack | null = useMemo(() => {
     if (!selectedComposed?.voiceTrackId) return null;
     const found = multiVoices.find(
-      (v) => v.id === selectedComposed.voiceTrackId
+      (v) => v.id === selectedComposed.voiceTrackId,
     );
     if (found) {
       return {
@@ -960,7 +1038,7 @@ export default function StudioWorkspace({
   const sanitizeUploadFile = (
     file: File,
     defaultExt = ".mp4",
-    defaultType = "video/mp4"
+    defaultType = "video/mp4",
   ): File => {
     const originalName = file.name || "media";
     const asciiBase = originalName
@@ -987,7 +1065,7 @@ export default function StudioWorkspace({
       width?: number;
       height?: number;
       onProgress?: (loaded: number, total: number) => void;
-    }
+    },
   ) => {
     const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB / chunk
     const totalBytes = file.size;
@@ -1020,11 +1098,17 @@ export default function StudioWorkspace({
 
           if (projectId) headers["x-project-id"] = projectId;
           if (options.kind) headers["x-upload-kind"] = options.kind;
-          if (options.targetCategory) headers["x-target-category"] = options.targetCategory;
-          if (options.relativePath) headers["x-relative-path"] = encodeURIComponent(options.relativePath);
-          if (options.duration) headers["x-video-duration"] = String(options.duration);
+          if (options.targetCategory)
+            headers["x-target-category"] = options.targetCategory;
+          if (options.relativePath)
+            headers["x-relative-path"] = encodeURIComponent(
+              options.relativePath,
+            );
+          if (options.duration)
+            headers["x-video-duration"] = String(options.duration);
           if (options.width) headers["x-video-width"] = String(options.width);
-          if (options.height) headers["x-video-height"] = String(options.height);
+          if (options.height)
+            headers["x-video-height"] = String(options.height);
 
           const res = await fetch(options.endpoint, {
             method: "POST",
@@ -1054,7 +1138,7 @@ export default function StudioWorkspace({
         throw new Error(
           `Lỗi tải mảnh ${chunkIndex + 1}/${totalChunks} của file "${file.name}": ${
             lastError?.message || "Mất kết nối mạng"
-          }`
+          }`,
         );
       }
     }
@@ -1070,7 +1154,7 @@ export default function StudioWorkspace({
       setStatusBanner({
         type: "error",
         text: `File "${file.name}" (${(file.size / 1024 / 1024).toFixed(
-          1
+          1,
         )} MB) vượt quá giới hạn tối đa cho phép (${MAX_ALLOWED / 1024 / 1024} MB).`,
       });
       return;
@@ -1131,7 +1215,7 @@ export default function StudioWorkspace({
             fileName: file.name,
           });
           setBusyMessage(
-            `Đang tải lên video: ${percent}% (${(loaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB)`
+            `Đang tải lên video: ${percent}% (${(loaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB)`,
           );
         },
       });
@@ -1143,7 +1227,7 @@ export default function StudioWorkspace({
       setStatusBanner({
         type: "success",
         text: `Đã nạp video "${file.name}" (${(file.size / 1024 / 1024).toFixed(
-          1
+          1,
         )} MB). Hãy bấm Auto detect hoặc tách cảnh thủ công!`,
       });
     } catch (err: unknown) {
@@ -1164,7 +1248,7 @@ export default function StudioWorkspace({
       return;
     }
     setBusyMessage(
-      "Đang quét phân tích frame (PySceneDetect ContentDetector)..."
+      "Đang quét phân tích frame (PySceneDetect ContentDetector)...",
     );
     setStatusBanner(null);
     try {
@@ -1212,7 +1296,7 @@ export default function StudioWorkspace({
       if (s.id !== shotId) return s;
       return applyMinDurationToShot(
         { ...s, category: newCat },
-        categoryMinDurations
+        categoryMinDurations,
       );
     });
     persistState({ ...state, shots: nextShots });
@@ -1235,7 +1319,7 @@ export default function StudioWorkspace({
     slicerVideoRef.current.currentTime = targetShot.begin;
     slicerVideoRef.current.playbackRate = Math.min(
       4,
-      Math.max(0.25, targetShot.edits.speed || 1)
+      Math.max(0.25, targetShot.edits.speed || 1),
     );
     slicerVideoRef.current.play().catch(() => {});
     setIsPlayingSlicer(true);
@@ -1255,7 +1339,7 @@ export default function StudioWorkspace({
       if (!state) return;
       const shotToSplit =
         state.shots.find(
-          (s) => targetSec > s.begin + 0.3 && targetSec < s.end - 0.3
+          (s) => targetSec > s.begin + 0.3 && targetSec < s.end - 0.3,
         ) || selectedShot;
 
       if (!shotToSplit) {
@@ -1286,7 +1370,7 @@ export default function StudioWorkspace({
           rawEnd: cutPoint,
           label: `${shotToSplit.label} (P1)`,
         },
-        categoryMinDurations
+        categoryMinDurations,
       );
       const secondHalf = applyMinDurationToShot(
         {
@@ -1299,7 +1383,7 @@ export default function StudioWorkspace({
           label: `${shotToSplit.label} (P2)`,
           edits: { ...shotToSplit.edits },
         },
-        categoryMinDurations
+        categoryMinDurations,
       );
 
       const nextShots: Shot[] = [];
@@ -1325,7 +1409,7 @@ export default function StudioWorkspace({
       applyMinDurationToShot,
       persistState,
       setStatusBanner,
-    ]
+    ],
   );
 
   // Merge shot with next shot
@@ -1351,7 +1435,7 @@ export default function StudioWorkspace({
         rawEnd: nextShot.rawEnd ?? nextShot.end,
         label: `${currentShot.label} + ${nextShot.label}`,
       },
-      categoryMinDurations
+      categoryMinDurations,
     );
 
     const nextShots = state.shots.filter((_, i) => i !== idx && i !== idx + 1);
@@ -1371,17 +1455,17 @@ export default function StudioWorkspace({
   const handleUpdateShotTrim = (
     shotId: string,
     newBegin: number,
-    newEnd: number
+    newEnd: number,
   ) => {
     if (!state) return;
     const maxDur = state.sourceVideo?.duration || 99999;
     const roundedBegin = Math.max(
       0,
-      Math.min(maxDur - 0.2, Math.round(newBegin * 10) / 10)
+      Math.min(maxDur - 0.2, Math.round(newBegin * 10) / 10),
     );
     const roundedEnd = Math.max(
       roundedBegin + 0.2,
-      Math.min(maxDur, Math.round(newEnd * 10) / 10)
+      Math.min(maxDur, Math.round(newEnd * 10) / 10),
     );
 
     const nextShots = state.shots.map((s) => {
@@ -1416,7 +1500,7 @@ export default function StudioWorkspace({
   const handleUpdateShotTime = (
     shotId: string,
     field: "begin" | "end",
-    val: number
+    val: number,
   ) => {
     if (!state) return;
     const rounded = Math.round(val * 10) / 10;
@@ -1440,7 +1524,7 @@ export default function StudioWorkspace({
     const nextShots = state.shots.map((s) =>
       s.id === shotId
         ? { ...s, edits: { ...s.edits, flipH: !s.edits.flipH } }
-        : s
+        : s,
     );
     persistState({ ...state, shots: nextShots });
   };
@@ -1450,7 +1534,7 @@ export default function StudioWorkspace({
     const nextShots = state.shots.map((s) =>
       s.id === shotId
         ? { ...s, edits: { ...s.edits, lockFlipH: !s.edits.lockFlipH } }
-        : s
+        : s,
     );
     persistState({ ...state, shots: nextShots });
   };
@@ -1458,7 +1542,7 @@ export default function StudioWorkspace({
   const handleSetSpeed = (shotId: string, speed: number) => {
     if (!state) return;
     const nextShots = state.shots.map((s) =>
-      s.id === shotId ? { ...s, edits: { ...s.edits, speed } } : s
+      s.id === shotId ? { ...s, edits: { ...s.edits, speed } } : s,
     );
     persistState({ ...state, shots: nextShots });
   };
@@ -1474,7 +1558,7 @@ export default function StudioWorkspace({
               zoom: depth ? { depth } : false,
             },
           }
-        : s
+        : s,
     );
     persistState({ ...state, shots: nextShots });
   };
@@ -1569,7 +1653,7 @@ export default function StudioWorkspace({
     }
     setIsSlicing(true);
     setBusyMessage(
-      "Đang cắt video thành các file .mp4 riêng biệt và nén ZIP..."
+      "Đang cắt video thành các file .mp4 riêng biệt và nén ZIP...",
     );
     try {
       const res = await fetch("/api/slice-scenes", {
@@ -1662,7 +1746,7 @@ export default function StudioWorkspace({
       }
 
       setBusyMessage(
-        "Đang ghi thẳng các file .mp4 vào đúng các thư mục trên máy tính..."
+        "Đang ghi thẳng các file .mp4 vào đúng các thư mục trên máy tính...",
       );
       const zipBlob = await res.blob();
       const zip = await JSZip.loadAsync(zipBlob);
@@ -1751,7 +1835,7 @@ export default function StudioWorkspace({
 
     setIsIngestingDrive(true);
     setBusyMessage(
-      `Đang nạp và kiểm tra ${parsedExcel.totalExtracted} link Google Drive từ các cột...`
+      `Đang nạp và kiểm tra ${parsedExcel.totalExtracted} link Google Drive từ các cột...`,
     );
     setStatusBanner(null);
 
@@ -1814,7 +1898,7 @@ export default function StudioWorkspace({
   // Nạp link Google Drive vào 1 cột category hoặc voice cụ thể
   const handleIngestSingleCategoryDrive = async (
     category: ShotCategory | "voice",
-    text: string
+    text: string,
   ) => {
     const rawLinks = text
       .split(/[\r\n,]+/)
@@ -1836,7 +1920,7 @@ export default function StudioWorkspace({
       category === "voice" ? "Voice (lồng tiếng)" : category.toUpperCase();
     setIsIngestingDrive(true);
     setBusyMessage(
-      `Đang nạp ${validFileIds.length} link vào mục ${catLabel}...`
+      `Đang nạp ${validFileIds.length} link vào mục ${catLabel}...`,
     );
     setStatusBanner(null);
 
@@ -1888,7 +1972,7 @@ export default function StudioWorkspace({
   // Smart Batching & Chunked Upload cho danh sách nhiều file ở Bước 2
   const uploadCategoryFilesSmart = async (
     files: File[],
-    targetCategory?: ShotCategory | "voice"
+    targetCategory?: ShotCategory | "voice",
   ) => {
     const BATCH_SIZE_LIMIT = 20 * 1024 * 1024; // Gom lô <= 20 MB để luôn đi qua Cloudflare an toàn
     const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
@@ -1919,17 +2003,25 @@ export default function StudioWorkspace({
 
       for (let i = 0; i < smallFiles.length; i++) {
         const file = smallFiles[i];
-        if (currentBatchBytes + file.size > BATCH_SIZE_LIMIT && currentBatch.length > 0) {
+        if (
+          currentBatchBytes + file.size > BATCH_SIZE_LIMIT &&
+          currentBatch.length > 0
+        ) {
           // Gửi lô hiện tại
           await sendBatchFormData(currentBatch, targetCategory);
           loadedBytes += currentBatchBytes;
-          const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+          const percent = Math.min(
+            100,
+            Math.round((loadedBytes / totalBytes) * 100),
+          );
           setUploadProgress({
             loadedBytes,
             totalBytes,
             percent,
           });
-          setBusyMessage(`Đang tải lên kho: ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`);
+          setBusyMessage(
+            `Đang tải lên kho: ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`,
+          );
           currentBatch = [];
           currentBatchBytes = 0;
         }
@@ -1940,19 +2032,26 @@ export default function StudioWorkspace({
       if (currentBatch.length > 0) {
         await sendBatchFormData(currentBatch, targetCategory);
         loadedBytes += currentBatchBytes;
-        const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+        const percent = Math.min(
+          100,
+          Math.round((loadedBytes / totalBytes) * 100),
+        );
         setUploadProgress({
           loadedBytes,
           totalBytes,
           percent,
         });
-        setBusyMessage(`Đang tải lên kho: ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`);
+        setBusyMessage(
+          `Đang tải lên kho: ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`,
+        );
       }
     }
 
     // 2. Tải các file nặng lẻ qua cơ chế Chunked Upload (20MB / chunk)
     for (const file of largeFiles) {
-      const relPath = (file as unknown as { webkitRelativePath?: string }).webkitRelativePath || "";
+      const relPath =
+        (file as unknown as { webkitRelativePath?: string })
+          .webkitRelativePath || "";
       let previousFileLoaded = 0;
       await uploadFileInChunks(file, {
         endpoint: "/api/category-library",
@@ -1962,30 +2061,36 @@ export default function StudioWorkspace({
           const delta = chunkLoaded - previousFileLoaded;
           previousFileLoaded = chunkLoaded;
           loadedBytes += delta;
-          const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+          const percent = Math.min(
+            100,
+            Math.round((loadedBytes / totalBytes) * 100),
+          );
           setUploadProgress({
             loadedBytes,
             totalBytes,
             percent,
             fileName: file.name,
           });
-          setBusyMessage(`Đang tải lên file "${file.name}": ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`);
+          setBusyMessage(
+            `Đang tải lên file "${file.name}": ${percent}% (${(loadedBytes / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`,
+          );
         },
       });
     }
 
     // Đồng bộ lại state kho clip mới nhất
     const refreshRes = await authFetch(
-      `/api/category-library?sessionId=${sessionId}${projectId ? `&projectId=${projectId}` : ""}`
+      `/api/category-library?sessionId=${sessionId}${projectId ? `&projectId=${projectId}` : ""}`,
     );
     const refreshData = await refreshRes.json();
     if (refreshData.categoryPools) setCategoryPools(refreshData.categoryPools);
-    if (refreshData.multiVoiceTracks) setMultiVoices(refreshData.multiVoiceTracks);
+    if (refreshData.multiVoiceTracks)
+      setMultiVoices(refreshData.multiVoiceTracks);
   };
 
   const sendBatchFormData = async (
     batchFiles: File[],
-    targetCategory?: ShotCategory | "voice"
+    targetCategory?: ShotCategory | "voice",
   ) => {
     const fd = new FormData();
     fd.append("sessionId", sessionId);
@@ -1997,7 +2102,7 @@ export default function StudioWorkspace({
       const safe = sanitizeUploadFile(
         f,
         isVoice ? ".mp3" : ".mp4",
-        isVoice ? "audio/mpeg" : "video/mp4"
+        isVoice ? "audio/mpeg" : "video/mp4",
       );
       fd.append("files", safe);
     }
@@ -2014,7 +2119,7 @@ export default function StudioWorkspace({
 
   // Master folder upload (reads all subfolders OPEN, PRODUCT, TEXTURE, APPLY, END)
   const handleMasterFolderUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -2022,7 +2127,9 @@ export default function StudioWorkspace({
     const fileList: File[] = [];
     for (let i = 0; i < files.length; i++) fileList.push(files[i]);
 
-    setBusyMessage(`Đang phân loại và nạp ${fileList.length} file từ thư mục...`);
+    setBusyMessage(
+      `Đang phân loại và nạp ${fileList.length} file từ thư mục...`,
+    );
     setStatusBanner(null);
     try {
       await uploadCategoryFilesSmart(fileList);
@@ -2043,7 +2150,7 @@ export default function StudioWorkspace({
   // Upload into a single specific category column
   const handleCategoryColumnUpload = async (
     category: ShotCategory,
-    files: FileList | null
+    files: FileList | null,
   ) => {
     if (!files || files.length === 0) return;
 
@@ -2051,7 +2158,7 @@ export default function StudioWorkspace({
     for (let i = 0; i < files.length; i++) fileList.push(files[i]);
 
     setBusyMessage(
-      `Đang nạp ${fileList.length} video vào ${category.toUpperCase()}...`
+      `Đang nạp ${fileList.length} video vào ${category.toUpperCase()}...`,
     );
     setStatusBanner(null);
     try {
@@ -2099,7 +2206,7 @@ export default function StudioWorkspace({
 
   const handleRemoveCategoryItem = async (
     cat: ShotCategory,
-    itemId: string
+    itemId: string,
   ) => {
     const fd = new FormData();
     fd.append("sessionId", sessionId);
@@ -2183,7 +2290,7 @@ export default function StudioWorkspace({
     setIsLoadingHistory(true);
     try {
       const res = await fetch(
-        `/api/project?id=${encodeURIComponent(projectId)}&history=1`
+        `/api/project?id=${encodeURIComponent(projectId)}&history=1`,
       );
       if (res.ok) {
         const data = await res.json();
@@ -2251,7 +2358,7 @@ export default function StudioWorkspace({
   const unrecordedComposedCount = useMemo(() => {
     if (!state?.composedVideos) return 0;
     return state.composedVideos.filter(
-      (comp) => !renderedHistoryList.some((r) => r.tupleKey === comp.tupleKey)
+      (comp) => !renderedHistoryList.some((r) => r.tupleKey === comp.tupleKey),
     ).length;
   }, [state, renderedHistoryList]);
 
@@ -2268,7 +2375,8 @@ export default function StudioWorkspace({
     setIsMarkingAllRendered(true);
     try {
       const unrecordedVideos = state.composedVideos.filter(
-        (comp) => !renderedHistoryList.some((r) => r.tupleKey === comp.tupleKey)
+        (comp) =>
+          !renderedHistoryList.some((r) => r.tupleKey === comp.tupleKey),
       );
 
       if (unrecordedVideos.length === 0) {
@@ -2394,12 +2502,12 @@ export default function StudioWorkspace({
 
   const handleToggleHistoryStatus = async (
     record: RenderedVideoRecord,
-    e?: React.MouseEvent
+    e?: React.MouseEvent,
   ) => {
     if (e) e.stopPropagation();
     if (!canEditHistory) {
       notifyPermissionDenied(
-        "Bạn không có quyền chỉnh sửa trạng thái lịch sử render."
+        "Bạn không có quyền chỉnh sửa trạng thái lịch sử render.",
       );
       return;
     }
@@ -2408,11 +2516,11 @@ export default function StudioWorkspace({
 
     // Optimistic UI update
     setRenderedHistoryList((prev) =>
-      prev.map((r) => (r.id === record.id ? { ...r, status: newStatus } : r))
+      prev.map((r) => (r.id === record.id ? { ...r, status: newStatus } : r)),
     );
     if (selectedHistoryDetail?.id === record.id) {
       setSelectedHistoryDetail((prev) =>
-        prev ? { ...prev, status: newStatus } : null
+        prev ? { ...prev, status: newStatus } : null,
       );
     }
 
@@ -2439,12 +2547,12 @@ export default function StudioWorkspace({
     } catch (err: unknown) {
       setRenderedHistoryList((prev) =>
         prev.map((r) =>
-          r.id === record.id ? { ...r, status: record.status } : r
-        )
+          r.id === record.id ? { ...r, status: record.status } : r,
+        ),
       );
       if (selectedHistoryDetail?.id === record.id) {
         setSelectedHistoryDetail((prev) =>
-          prev ? { ...prev, status: record.status } : null
+          prev ? { ...prev, status: record.status } : null,
         );
       }
       const msg = err instanceof Error ? err.message : String(err);
@@ -2478,7 +2586,7 @@ export default function StudioWorkspace({
         const tupleMatch = (r.tupleKey || "").toLowerCase().includes(q);
         const comp = r.payload as ComposedVideo | undefined;
         const slotMatch = comp?.slots?.some((s) =>
-          (s.shotLabel || s.shotId || "").toLowerCase().includes(q)
+          (s.shotLabel || s.shotId || "").toLowerCase().includes(q),
         );
         return nameMatch || tupleMatch || slotMatch;
       });
@@ -2500,7 +2608,7 @@ export default function StudioWorkspace({
 
   const totalHistoryPages = Math.max(
     1,
-    Math.ceil(filteredHistoryList.length / historyPageSize)
+    Math.ceil(filteredHistoryList.length / historyPageSize),
   );
 
   const paginatedHistoryList = useMemo(() => {
@@ -2519,7 +2627,7 @@ export default function StudioWorkspace({
   ]);
 
   const getGoogleDriveLinkFromSlot = (
-    slot?: ResolvedShotSlot | null
+    slot?: ResolvedShotSlot | null,
   ): string => {
     if (!slot) return "";
     if (slot.localUrl?.startsWith("/api/drive-stream/")) {
@@ -2545,7 +2653,7 @@ export default function StudioWorkspace({
   };
 
   const getGoogleDriveLinkFromVoice = (
-    voice?: MultiVoiceItem | null
+    voice?: MultiVoiceItem | null,
   ): string => {
     if (!voice) return "";
     if (voice.driveRawUrl) return voice.driveRawUrl;
@@ -2625,7 +2733,7 @@ export default function StudioWorkspace({
 
     const projectNameSafe = (currentProjectName || "OmniGen").replace(
       /\s+/g,
-      "_"
+      "_",
     );
     const fileName = `Lich_su_render_${projectNameSafe}_${new Date()
       .toISOString()
@@ -2702,7 +2810,7 @@ export default function StudioWorkspace({
   // Plan Combinatorial Mix
   const handlePlanDiverseMix = async () => {
     const missingCats = CATEGORY_ORDER.filter(
-      (c) => (categoryPools[c]?.length || 0) === 0
+      (c) => (categoryPools[c]?.length || 0) === 0,
     );
     if (missingCats.length > 0) {
       setStatusBanner({
@@ -2715,11 +2823,14 @@ export default function StudioWorkspace({
     }
 
     setBusyMessage(
-      "Đang tính toán các tổ hợp đa dạng tối ưu (Hamming distance, Speed Scale)..."
+      "Đang tính toán các tổ hợp đa dạng tối ưu (Hamming distance, Speed Scale)...",
     );
     setStatusBanner(null);
     const clampedMixCount = Math.max(1, Math.min(50, targetMixCount || 10));
-    const effectivePrefix = (clipNamePrefix || "").trim() || currentProjectName.trim() || "Video Remix";
+    const effectivePrefix =
+      (clipNamePrefix || "").trim() ||
+      currentProjectName.trim() ||
+      "Video Remix";
     persistProjectSettings({ clipNamePrefix: effectivePrefix });
 
     try {
@@ -2775,7 +2886,7 @@ export default function StudioWorkspace({
   const handleUpdateComposedSlot = (
     composedId: string,
     slotIndex: number,
-    edits: Partial<ResolvedShotSlot>
+    edits: Partial<ResolvedShotSlot>,
   ) => {
     if (!state) return;
     const targetComp = state.composedVideos.find((c) => c.id === composedId);
@@ -2784,7 +2895,7 @@ export default function StudioWorkspace({
     let currentVoice: VoiceTrack | null = null;
     if (targetComp.voiceTrackId) {
       const foundMulti = state.multiVoiceTracks?.find(
-        (v) => v.id === targetComp.voiceTrackId
+        (v) => v.id === targetComp.voiceTrackId,
       );
       if (foundMulti) {
         currentVoice = {
@@ -2807,11 +2918,11 @@ export default function StudioWorkspace({
       slotIndex,
       edits,
       currentVoice,
-      state.syncMode
+      state.syncMode,
     );
 
     const updatedList = state.composedVideos.map((c) =>
-      c.id === composedId ? updatedComp : c
+      c.id === composedId ? updatedComp : c,
     );
 
     persistState({
@@ -2822,7 +2933,7 @@ export default function StudioWorkspace({
 
   const handleChangeComposedVoice = (
     composedId: string,
-    voiceId: string | null
+    voiceId: string | null,
   ) => {
     if (!state) return;
     const targetComp = state.composedVideos.find((c) => c.id === composedId);
@@ -2850,12 +2961,12 @@ export default function StudioWorkspace({
       -1,
       {},
       chosenVoice,
-      state.syncMode
+      state.syncMode,
     );
     updatedComp.voiceTrackId = voiceId;
 
     const updatedList = state.composedVideos.map((c) =>
-      c.id === composedId ? updatedComp : c
+      c.id === composedId ? updatedComp : c,
     );
 
     persistState({
@@ -2955,7 +3066,7 @@ export default function StudioWorkspace({
       pollInterval = setInterval(async () => {
         try {
           const pRes = await fetch(
-            `/api/render-progress?sessionId=${encodeURIComponent(sessionId)}`
+            `/api/render-progress?sessionId=${encodeURIComponent(sessionId)}`,
           );
           if (pRes.ok) {
             const pData = await pRes.json();
@@ -3046,708 +3157,523 @@ export default function StudioWorkspace({
       access={accessState}
       onPermissionDenied={notifyPermissionDenied}
     >
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Header & Two-Tab Navigation */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* Logo & Brand title */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 hover:opacity-90 transition"
-          >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-rose-500/20 shrink-0">
-              <Film className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-extrabold tracking-tight">
-                <span>OmniGen</span>
-              </h1>
-              <p className="text-xs text-slate-400">
-                Hệ thống tách video slicer & trộn lách content mỹ phẩm
-              </p>
-            </div>
-          </Link>
-
-          <div className="h-6 w-px bg-slate-800 mx-1 hidden sm:block" />
-
-          {/* Breadcrumb Navigation: Dự án > Folder Switcher */}
-          <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition"
-              title="Danh sách dự án"
-            >
-              <ArrowLeft className="w-3 h-3 sm:hidden" />
-              <span className="hidden sm:inline">Dự án</span>
-            </Link>
-
-            <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
-
-            {parentProjectIdState ? (
-              <Link
-                href={`/projects/${parentProjectIdState}`}
-                className="max-w-[120px] sm:max-w-[180px] truncate px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition font-medium"
-                title={`Về dự án: ${parentProjectNameState || "Dự án"}`}
-              >
-                {parentProjectNameState || "Dự án"}
-              </Link>
-            ) : (
-              <span className="max-w-[120px] sm:max-w-[180px] truncate px-2.5 py-1.5 rounded-xl bg-slate-900/40 text-slate-400 font-medium">
-                {parentProjectNameState || "Dự án"}
-              </span>
-            )}
-
-            <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
-
-            {/* Folder Dropdown Quick Switcher */}
-            <div className="relative" ref={folderSwitcherRef}>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+        <GlobalSidebar
+          mainTab={mainTab}
+          onSelectTab={setMainTab}
+          isExpanded={isSidebarExpanded}
+          onToggleExpand={handleToggleSidebar}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          canViewSplit={canViewSplit}
+          canViewMix={canViewMix}
+          canViewHistory={canViewHistory}
+          projectRenderedCount={projectRenderedCount}
+          onHistoryClick={fetchRenderedHistory}
+        />
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Top Header with Breadcrumbs & Quick Actions */}
+          <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Mobile Drawer Trigger Button */}
               <button
                 type="button"
-                onClick={() => setShowFolderSwitcher((prev) => !prev)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 hover:border-indigo-500/60 text-white font-semibold transition cursor-pointer"
-                title="Bấm để chuyển nhanh giữa các folder"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="md:hidden p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white transition shrink-0"
+                title="Mở menu điều hướng"
+                aria-label="Mở menu điều hướng"
               >
-                <FolderOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span className="max-w-[130px] sm:max-w-[200px] truncate">
-                  {currentProjectName || "Folder"}
-                </span>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-indigo-400 transition-transform duration-200 ${
-                    showFolderSwitcher ? "rotate-180" : ""
-                  }`}
-                />
+                <Menu className="w-4 h-4" />
               </button>
-
-              {/* Dropdown Menu */}
-              {showFolderSwitcher && (
-                <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                    Các folder trong dự án
-                  </div>
-                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-800/40 py-1">
-                    {siblingFolders.length > 0 ? (
-                      siblingFolders.map((f) => {
-                        const isCurrent = f.id === projectId;
-                        return (
-                          <Link
-                            key={f.id}
-                            href={`/projects/${parentProjectIdState || "default"}/folders/${f.id}`}
-                            onClick={() => setShowFolderSwitcher(false)}
-                            className={`flex items-center justify-between px-3 py-2 text-xs transition ${
-                              isCurrent
-                                ? "bg-indigo-600/15 text-indigo-300 font-bold"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FolderOpen
-                                className={`w-3.5 h-3.5 shrink-0 ${
-                                  isCurrent ? "text-indigo-400" : "text-slate-500"
+              {/* Breadcrumb Navigation: Dự án > Folder Switcher */}
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs min-w-0">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition shrink-0"
+                  title="Danh sách dự án"
+                >
+                  <ArrowLeft className="w-3 h-3 sm:hidden" />
+                  <span className="hidden sm:inline">Dự án</span>
+                </Link>
+                <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
+                {parentProjectIdState ? (
+                  <Link
+                    href={`/projects/${parentProjectIdState}`}
+                    className="max-w-[110px] sm:max-w-[180px] truncate px-2.5 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition font-medium"
+                    title={`Về dự án: ${parentProjectNameState || "Dự án"}`}
+                  >
+                    {parentProjectNameState || "Dự án"}
+                  </Link>
+                ) : (
+                  <span className="max-w-[110px] sm:max-w-[180px] truncate px-2.5 py-1.5 rounded-xl bg-slate-900/40 text-slate-400 font-medium">
+                    {parentProjectNameState || "Dự án"}
+                  </span>
+                )}
+                <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
+                {/* Folder Dropdown Quick Switcher */}
+                <div className="relative" ref={folderSwitcherRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowFolderSwitcher((prev) => !prev)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 hover:border-indigo-500/60 text-white font-semibold transition cursor-pointer"
+                    title="Bấm để chuyển nhanh giữa các folder"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span className="max-w-[120px] sm:max-w-[200px] truncate">
+                      {currentProjectName || "Folder"}
+                    </span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-indigo-400 transition-transform duration-200 ${
+                        showFolderSwitcher ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {/* Dropdown Menu */}
+                  {showFolderSwitcher && (
+                    <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                        Các folder trong dự án
+                      </div>
+                      <div className="max-h-56 overflow-y-auto divide-y divide-slate-800/40 py-1">
+                        {siblingFolders.length > 0 ? (
+                          siblingFolders.map((f) => {
+                            const isCurrent = f.id === projectId;
+                            return (
+                              <Link
+                                key={f.id}
+                                href={`/projects/${parentProjectIdState || "default"}/folders/${f.id}`}
+                                onClick={() => setShowFolderSwitcher(false)}
+                                className={`flex items-center justify-between px-3 py-2 text-xs transition ${
+                                  isCurrent
+                                    ? "bg-indigo-600/15 text-indigo-300 font-bold"
+                                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                                 }`}
-                              />
-                              <span className="truncate">{f.name}</span>
-                            </div>
-                            {isCurrent && (
-                              <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 ml-2" />
-                            )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FolderOpen
+                                    className={`w-3.5 h-3.5 shrink-0 ${
+                                      isCurrent
+                                        ? "text-indigo-400"
+                                        : "text-slate-500"
+                                    }`}
+                                  />
+                                  <span className="truncate">{f.name}</span>
+                                </div>
+                                {isCurrent && (
+                                  <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 ml-2" />
+                                )}
+                              </Link>
+                            );
+                          })
+                        ) : (
+                          <div className="px-3 py-2 text-xs text-slate-500 italic">
+                            Chỉ có 1 folder hiện tại
+                          </div>
+                        )}
+                      </div>
+                      {parentProjectIdState && (
+                        <div className="p-1.5 border-t border-slate-800 bg-slate-950/40">
+                          <Link
+                            href={`/projects/${parentProjectIdState}`}
+                            onClick={() => setShowFolderSwitcher(false)}
+                            className="flex items-center justify-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800/70 hover:bg-slate-800 transition"
+                          >
+                            <Layers className="w-3 h-3 text-indigo-400" />
+                            <span>Quản lý tất cả folder</span>
                           </Link>
-                        );
-                      })
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {projectRenderedCount > 0 && canViewHistory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab("history");
+                      fetchRenderedHistory();
+                    }}
+                    className="hidden lg:flex items-center gap-1 text-[11px] font-mono text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 px-2.5 py-1 rounded-xl border border-indigo-800/60 transition cursor-pointer shrink-0"
+                    title="Bấm để xem lịch sử video đã render"
+                  >
+                    <History className="w-3 h-3 text-indigo-400" />
+                    <span>Đã render {projectRenderedCount} video</span>
+                  </button>
+                )}
+                {!accessState?.isOwner && accessState?.owner && (
+                  <span className="hidden xl:inline-flex items-center text-[10px] font-medium px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                    Được chia sẻ bởi{" "}
+                    {accessState.owner.name || accessState.owner.email}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Share & User Avatar */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              {accessState?.isOwner && parentProjectIdState && (
+                <button
+                  type="button"
+                  onClick={() => setShowShareModal(true)}
+                  className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                  title="Chia sẻ dự án"
+                  aria-label="Chia sẻ dự án"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
+              <UserAvatarMenu showProjectsShortcut={true} />
+            </div>
+          </header>
+
+          {/* Hidden Master File Pickers */}
+          <input
+            ref={singleVideoInputRef}
+            type="file"
+            accept="video/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.mkv"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.[0])
+                handleUploadSingleSource(e.target.files[0]);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={masterFolderInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory
+            webkitdirectory=""
+            directory=""
+            multiple
+            className="hidden"
+            onChange={handleMasterFolderUpload}
+          />
+          {CATEGORY_ORDER.map((c) => (
+            <input
+              key={`col_input_${c}`}
+              ref={(el) => {
+                categoryInputRefs.current[c] = el;
+              }}
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm"
+              multiple
+              className="hidden"
+              onChange={(e) => handleCategoryColumnUpload(c, e.target.files)}
+            />
+          ))}
+          <input
+            ref={voiceInputRef}
+            type="file"
+            accept="audio/mp3,audio/wav,audio/m4a,audio/mpeg"
+            multiple
+            className="hidden"
+            onChange={(e) => handleVoiceUpload(e.target.files)}
+          />
+
+          <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6 transition-all duration-300">
+            {/* ======================================================== */}
+            {/* TAB 1: TÁCH 1 VIDEO & SLICER STUDIO (CHỈNH GIÂY + PREVIEW) */}
+            {/* ======================================================== */}
+            {mainTab === "split" && (
+              <div className="space-y-6">
+                {/* Top Control Card: Upload 1 video & Min Giây */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                  {/* Left: Upload Single Video Source */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-bold flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-xs">
+                          1
+                        </span>
+                        <span>Upload 1 video gốc để tách</span>
+                      </h2>
+                      {state?.sourceVideo && (
+                        <button
+                          onClick={handleNextVideo}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Làm video mới</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {!state?.sourceVideo ? (
+                      canEditSplit ? (
+                        <div
+                          onClick={() => singleVideoInputRef.current?.click()}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (e.dataTransfer.files?.[0]) {
+                              handleUploadSingleSource(e.dataTransfer.files[0]);
+                            }
+                          }}
+                          className="border-2 border-dashed border-slate-700 hover:border-rose-500 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition bg-slate-950/40 hover:bg-slate-950/70"
+                        >
+                          <Upload className="w-7 h-7 text-rose-400 mb-2 animate-bounce" />
+                          <p className="text-xs font-semibold text-white">
+                            Chọn hoặc kéo thả 1 video gốc vào đây
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            MP4, MOV, WebM (Khuyên dùng video dọc 9:16)
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-slate-950/40 text-slate-500 text-xs">
+                          Chưa có video gốc và bạn không có quyền tải lên video.
+                        </div>
+                      )
                     ) : (
-                      <div className="px-3 py-2 text-xs text-slate-500 italic">
-                        Chỉ có 1 folder hiện tại
+                      <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold truncate text-white max-w-[200px]">
+                            {state.sourceVideo.name}
+                          </span>
+                          <span className="font-mono text-emerald-400">
+                            {state.sourceVideo.duration.toFixed(1)}s
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <span>
+                              {(
+                                state.sourceVideo.sizeBytes /
+                                1024 /
+                                1024
+                              ).toFixed(1)}{" "}
+                              MB
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {state.sourceVideo.width}x
+                              {state.sourceVideo.height}
+                            </span>
+                          </div>
+                          <PermissionGate module="split" action="edit">
+                            <button
+                              onClick={() =>
+                                singleVideoInputRef.current?.click()
+                              }
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-[11px] text-rose-300 transition"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Đổi video khác</span>
+                            </button>
+                          </PermissionGate>
+                        </div>
                       </div>
                     )}
                   </div>
-                  {parentProjectIdState && (
-                    <div className="p-1.5 border-t border-slate-800 bg-slate-950/40">
-                      <Link
-                        href={`/projects/${parentProjectIdState}`}
-                        onClick={() => setShowFolderSwitcher(false)}
-                        className="flex items-center justify-center gap-1.5 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800/70 hover:bg-slate-800 transition"
-                      >
-                        <Layers className="w-3 h-3 text-indigo-400" />
-                        <span>Quản lý tất cả folder</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
 
-            {projectRenderedCount > 0 && canViewHistory && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab("history");
-                  fetchRenderedHistory();
-                }}
-                className="hidden lg:flex items-center gap-1 text-[11px] font-mono text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 px-2.5 py-1 rounded-xl border border-indigo-800/60 transition cursor-pointer shrink-0"
-                title="Bấm để xem lịch sử video đã render"
-              >
-                <History className="w-3 h-3 text-indigo-400" />
-                <span>Đã render {projectRenderedCount} video</span>
-              </button>
-            )}
-
-            {!accessState?.isOwner && accessState?.owner && (
-              <span className="hidden xl:inline-flex items-center text-[10px] font-medium px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                Được chia sẻ bởi {accessState.owner.name || accessState.owner.email}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 3 Dedicated Workspaces / Tabs & User Avatar */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shadow-inner gap-1">
-            {canViewSplit && (
-              <button
-                type="button"
-                onClick={() => setMainTab("split")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  mainTab === "split"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-100"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                }`}
-              >
-                <Scissors className="w-4 h-4" />
-                <span>Tách video</span>
-              </button>
-            )}
-
-            {canViewMix && (
-              <button
-                type="button"
-                onClick={() => setMainTab("mix")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  mainTab === "mix"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-100"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                }`}
-              >
-                <Shuffle className="w-4 h-4" />
-                <span>Trộn ghép</span>
-              </button>
-            )}
-
-            {canViewHistory && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab("history");
-                  fetchRenderedHistory();
-                }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  mainTab === "history"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-100"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                }`}
-              >
-                <History className="w-4 h-4" />
-                <span>Lịch sử render</span>
-                {projectRenderedCount > 0 && (
-                  <span
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold transition-colors ${
-                      mainTab === "history"
-                        ? "bg-white/25 text-white"
-                        : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
-                    }`}
-                  >
-                    {projectRenderedCount}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-
-          <UserAvatarMenu showProjectsShortcut={true} />
-        </div>
-      </header>
-
-      {/* Hidden Master File Pickers */}
-      <input
-        ref={singleVideoInputRef}
-        type="file"
-        accept="video/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.mkv"
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files?.[0]) handleUploadSingleSource(e.target.files[0]);
-          e.target.value = "";
-        }}
-      />
-      <input
-        ref={masterFolderInputRef}
-        type="file"
-        // @ts-expect-error webkitdirectory
-        webkitdirectory=""
-        directory=""
-        multiple
-        className="hidden"
-        onChange={handleMasterFolderUpload}
-      />
-      {CATEGORY_ORDER.map((c) => (
-        <input
-          key={`col_input_${c}`}
-          ref={(el) => {
-            categoryInputRefs.current[c] = el;
-          }}
-          type="file"
-          accept="video/mp4,video/quicktime,video/webm"
-          multiple
-          className="hidden"
-          onChange={(e) => handleCategoryColumnUpload(c, e.target.files)}
-        />
-      ))}
-      <input
-        ref={voiceInputRef}
-        type="file"
-        accept="audio/mp3,audio/wav,audio/m4a,audio/mpeg"
-        multiple
-        className="hidden"
-        onChange={(e) => handleVoiceUpload(e.target.files)}
-      />
-
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
-        {/* ======================================================== */}
-        {/* TAB 1: TÁCH 1 VIDEO & SLICER STUDIO (CHỈNH GIÂY + PREVIEW) */}
-        {/* ======================================================== */}
-        {mainTab === "split" && (
-          <div className="space-y-6">
-            {/* Top Control Card: Upload 1 video & Min Giây */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
-              {/* Left: Upload Single Video Source */}
-              <div className="lg:col-span-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-xs">
-                      1
-                    </span>
-                    <span>Upload 1 video gốc để tách</span>
-                  </h2>
-                  {state?.sourceVideo && (
-                    <button
-                      onClick={handleNextVideo}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Làm video mới</span>
-                    </button>
-                  )}
-                </div>
-
-                {!state?.sourceVideo ? (
-                  canEditSplit ? (
-                    <div
-                      onClick={() => singleVideoInputRef.current?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (e.dataTransfer.files?.[0]) {
-                          handleUploadSingleSource(e.dataTransfer.files[0]);
-                        }
-                      }}
-                      className="border-2 border-dashed border-slate-700 hover:border-rose-500 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition bg-slate-950/40 hover:bg-slate-950/70"
-                    >
-                      <Upload className="w-7 h-7 text-rose-400 mb-2 animate-bounce" />
-                      <p className="text-xs font-semibold text-white">
-                        Chọn hoặc kéo thả 1 video gốc vào đây
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        MP4, MOV, WebM (Khuyên dùng video dọc 9:16)
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-slate-950/40 text-slate-500 text-xs">
-                      Chưa có video gốc và bạn không có quyền tải lên video.
-                    </div>
-                  )
-                ) : (
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold truncate text-white max-w-[200px]">
-                        {state.sourceVideo.name}
+                  {/* Right: Min Giây per Category & Auto Detect */}
+                  <div className="lg:col-span-7 space-y-3">
+                    <h2 className="text-sm font-bold flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-xs">
+                        2
                       </span>
-                      <span className="font-mono text-emerald-400">
-                        {state.sourceVideo.duration.toFixed(1)}s
+                      <span>
+                        Cài đặt số giây tối thiểu (min giây) cho 5 category
                       </span>
+                    </h2>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {SHOT_CATEGORIES.map((cat) => {
+                        const currentMin = categoryMinDurations[cat.id];
+                        return (
+                          <div
+                            key={cat.id}
+                            className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between"
+                          >
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1 self-start ${cat.badgeClass}`}
+                            >
+                              {cat.label}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="1.0"
+                                max="30.0"
+                                disabled={!canEditSplit}
+                                value={currentMin}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 1.0;
+                                  const updatedMinDurs = {
+                                    ...categoryMinDurations,
+                                    [cat.id]: val,
+                                  };
+                                  if (state) {
+                                    const updatedShots = state.shots.map((s) =>
+                                      applyMinDurationToShot(s, updatedMinDurs),
+                                    );
+                                    persistState({
+                                      ...state,
+                                      shots: updatedShots,
+                                      categoryMinDurations: updatedMinDurs,
+                                    });
+                                  }
+                                }}
+                                className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-center text-white focus:outline-none focus:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <span className="text-xs text-slate-400">s</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <div className="flex items-center gap-2">
-                        <span>
-                          {(state.sourceVideo.sizeBytes / 1024 / 1024).toFixed(
-                            1
-                          )}{" "}
-                          MB
-                        </span>
-                        <span>•</span>
-                        <span>
-                          {state.sourceVideo.width}x{state.sourceVideo.height}
-                        </span>
+
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <label className="flex items-center gap-1">
+                          <span>Thuật toán:</span>
+                          <select
+                            disabled={!canEditSplit}
+                            value={pyDetector}
+                            onChange={(e) =>
+                              setPyDetector(
+                                e.target.value as "content" | "adaptive",
+                              )
+                            }
+                            className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="content">Content</option>
+                            <option value="adaptive">Adaptive</option>
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-1">
+                          <span>Threshold:</span>
+                          <input
+                            type="number"
+                            disabled={!canEditSplit}
+                            value={pyThreshold}
+                            onChange={(e) =>
+                              setPyThreshold(Number(e.target.value))
+                            }
+                            className="w-12 px-1 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-center text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </label>
                       </div>
+
                       <PermissionGate module="split" action="edit">
                         <button
-                          onClick={() => singleVideoInputRef.current?.click()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-[11px] text-rose-300 transition"
+                          onClick={handleRunPySceneDetect}
+                          disabled={!state?.sourceVideo}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold transition shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:pointer-events-none"
                         >
-                          <Upload className="w-3 h-3" />
-                          <span>Đổi video khác</span>
+                          <Wand2 className="w-3.5 h-3.5" />
+                          <span>Auto detect cắt scene</span>
                         </button>
                       </PermissionGate>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Right: Min Giây per Category & Auto Detect */}
-              <div className="lg:col-span-7 space-y-3">
-                <h2 className="text-sm font-bold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-xs">
-                    2
-                  </span>
-                  <span>
-                    Cài đặt số giây tối thiểu (min giây) cho 5 category
-                  </span>
-                </h2>
-
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {SHOT_CATEGORIES.map((cat) => {
-                    const currentMin = categoryMinDurations[cat.id];
-                    return (
-                      <div
-                        key={cat.id}
-                        className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col justify-between"
-                      >
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1 self-start ${cat.badgeClass}`}
-                        >
-                          {cat.label}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="1.0"
-                            max="30.0"
-                            disabled={!canEditSplit}
-                            value={currentMin}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 1.0;
-                              const updatedMinDurs = {
-                                ...categoryMinDurations,
-                                [cat.id]: val,
-                              };
-                              if (state) {
-                                const updatedShots = state.shots.map((s) =>
-                                  applyMinDurationToShot(s, updatedMinDurs)
-                                );
-                                persistState({
-                                  ...state,
-                                  shots: updatedShots,
-                                  categoryMinDurations: updatedMinDurs,
-                                });
-                              }
-                            }}
-                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-center text-white focus:outline-none focus:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                          <span className="text-xs text-slate-400">s</span>
+                {/* Category Statistics Summary Bar & Hotkeys Helper */}
+                {state?.shots && state.shots.length > 0 && (
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-rose-400" />
+                          <span>Thống kê 5 nhóm cảnh cắt:</span>
+                        </h3>
+                        <div className="flex items-center gap-1.5">
+                          {SHOT_CATEGORIES.map((c) => {
+                            const cnt = categoryStats.counts[c.id];
+                            return (
+                              <span
+                                key={c.id}
+                                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
+                                  cnt > 0
+                                    ? c.badgeClass
+                                    : "bg-slate-950 text-slate-600 border-slate-800"
+                                }`}
+                              >
+                                {c.id.slice(0, 3).toUpperCase()}: {cnt}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
 
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <label className="flex items-center gap-1">
-                      <span>Thuật toán:</span>
-                      <select
-                        disabled={!canEditSplit}
-                        value={pyDetector}
-                        onChange={(e) =>
-                          setPyDetector(
-                            e.target.value as "content" | "adaptive"
-                          )
-                        }
-                        className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="content">Content</option>
-                        <option value="adaptive">Adaptive</option>
-                      </select>
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <span>Threshold:</span>
-                      <input
-                        type="number"
-                        disabled={!canEditSplit}
-                        value={pyThreshold}
-                        onChange={(e) => setPyThreshold(Number(e.target.value))}
-                        className="w-12 px-1 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-center text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                    </label>
-                  </div>
-
-                  <PermissionGate module="split" action="edit">
-                    <button
-                      onClick={handleRunPySceneDetect}
-                      disabled={!state?.sourceVideo}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold transition shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:pointer-events-none"
-                    >
-                      <Wand2 className="w-3.5 h-3.5" />
-                      <span>Auto detect cắt scene</span>
-                    </button>
-                  </PermissionGate>
-                </div>
-              </div>
-            </div>
-
-            {/* Category Statistics Summary Bar & Hotkeys Helper */}
-            {state?.shots && state.shots.length > 0 && (
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-rose-400" />
-                      <span>Thống kê 5 nhóm cảnh cắt:</span>
-                    </h3>
-                    <div className="flex items-center gap-1.5">
-                      {SHOT_CATEGORIES.map((c) => {
-                        const cnt = categoryStats.counts[c.id];
-                        return (
-                          <span
-                            key={c.id}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
-                              cnt > 0
-                                ? c.badgeClass
-                                : "bg-slate-950 text-slate-600 border-slate-800"
-                            }`}
-                          >
-                            {c.id.slice(0, 3).toUpperCase()}: {cnt}
-                          </span>
-                        );
-                      })}
+                      {/* Hotkeys helper pill */}
+                      <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                        <span>Phím tắt:</span>
+                        <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
+                          1–5
+                        </span>{" "}
+                        gán Category •{" "}
+                        <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
+                          S
+                        </span>{" "}
+                        Tách đôi •{" "}
+                        <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
+                          M
+                        </span>{" "}
+                        Mirror •{" "}
+                        <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
+                          L
+                        </span>{" "}
+                        Khoá chữ •{" "}
+                        <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
+                          Space
+                        </span>{" "}
+                        Play/Dừng
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Hotkeys helper pill */}
-                  <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                    <span>Phím tắt:</span>
-                    <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
-                      1–5
-                    </span>{" "}
-                    gán Category •{" "}
-                    <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
-                      S
-                    </span>{" "}
-                    Tách đôi •{" "}
-                    <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
-                      M
-                    </span>{" "}
-                    Mirror •{" "}
-                    <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
-                      L
-                    </span>{" "}
-                    Khoá chữ •{" "}
-                    <span className="font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-slate-200">
-                      Space
-                    </span>{" "}
-                    Play/Dừng
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* FULL SLICER STUDIO WORKSPACE (GRID + 100% WIDTH EXPORT CARD) */}
-            {state?.shots && state.shots.length > 0 && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                  {/* ======================================================== */}
-                  {/* LEFT COLUMN (7/12): 5 CATEGORY CARDS + INLINE INSPECTOR */}
-                  {/* ======================================================== */}
-                  <div className="lg:col-span-7 space-y-4">
-                    {/* 5 Category Cards Header & Action */}
-                    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-indigo-400" />
-                          <h3 className="text-sm font-bold text-white">
-                            Kho video theo 5 category (đã tách từ video gốc)
-                          </h3>
-                        </div>
-                        <PermissionGate module="split" action="edit">
-                          <button
-                            onClick={() => {
-                              const lastEnd =
-                                state.shots[state.shots.length - 1]?.end || 0;
-                              const maxDur = state.sourceVideo?.duration || 30;
-                              const newBegin =
-                                lastEnd < maxDur - 1
-                                  ? lastEnd
-                                  : Math.max(0, maxDur - 4);
-                              const newEnd =
-                                Math.round(Math.min(maxDur, newBegin + 4) * 10) /
-                                10;
-                              const catToAssign =
-                                splitEditingCategory || "product";
-                              const newShot: Shot = {
-                                id: `shot_${Date.now()}`,
-                                sourceVideoId: state.sourceVideo?.id || "src_vid",
-                                label: `Cảnh #${state.shots.length + 1}`,
-                                begin: Math.round(newBegin * 10) / 10,
-                                end: newEnd,
-                                rawBegin: Math.round(newBegin * 10) / 10,
-                                rawEnd: newEnd,
-                                category: catToAssign,
-                                edits: {
-                                  flipH: false,
-                                  lockFlipH: false,
-                                  speed: 1,
-                                  zoom: false,
-                                },
-                              };
-                              persistState({
-                                ...state,
-                                shots: [...state.shots, newShot],
-                              });
-                              handleSelectSplitShot(newShot);
-                              setSplitEditingCategory(catToAssign);
-                              setAccordionShotId(newShot.id);
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Thêm shot thủ công</span>
-                          </button>
-                        </PermissionGate>
-                      </div>
-
-                      {/* 5 Slots Badges / Category Cards */}
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {SHOT_CATEGORIES.map((cat) => {
-                          const catShots = state.shots.filter(
-                            (s) => s.category === cat.id
-                          );
-                          const isCatActive = splitEditingCategory === cat.id;
-                          const minDur = categoryMinDurations[cat.id] ?? 3.0;
-                          const totalDur = catShots.reduce(
-                            (acc, s) =>
-                              acc + (s.end - s.begin) / (s.edits.speed || 1),
-                            0
-                          );
-
-                          return (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => {
-                                if (isCatActive) {
-                                  setSplitEditingCategory(null);
-                                  setAccordionShotId(null);
-                                } else {
-                                  setSplitEditingCategory(cat.id);
-                                  setAccordionShotId(null);
-                                  const currentCatShots = state.shots.filter(
-                                    (s) => s.category === cat.id
-                                  );
-                                  if (currentCatShots.length > 0) {
-                                    handleSelectSplitShot(currentCatShots[0]);
-                                  }
-                                }
-                              }}
-                              className={`p-2 rounded-xl text-left border text-[10px] transition cursor-pointer flex flex-col justify-between ${
-                                isCatActive
-                                  ? "bg-indigo-950/70 border-indigo-500 ring-2 ring-indigo-500/50 shadow-md shadow-indigo-500/20"
-                                  : "bg-slate-950/80 border-slate-800 hover:border-slate-700"
-                              }`}
-                            >
-                              <div>
-                                <div className="font-bold text-slate-200 uppercase flex items-center justify-between">
-                                  <span
-                                    className={
-                                      isCatActive
-                                        ? "text-indigo-300 font-extrabold"
-                                        : ""
-                                    }
-                                  >
-                                    {cat.id}
-                                  </span>
-                                  <span
-                                    className={`font-mono font-bold ${
-                                      isCatActive
-                                        ? "text-indigo-300"
-                                        : "text-slate-300"
-                                    }`}
-                                  >
-                                    {catShots.length > 0
-                                      ? `${totalDur.toFixed(1)}s`
-                                      : "0s"}
-                                  </span>
-                                </div>
-                                <div className="text-slate-400 truncate mt-1 text-[9px] font-medium">
-                                  {catShots.length > 0
-                                    ? `${catShots.length} cảnh`
-                                    : "Chưa có"}
-                                </div>
-                              </div>
-                              <div className="font-mono text-[9px] text-slate-500 mt-1.5 pt-1 border-t border-slate-800/80 flex items-center justify-between">
-                                <span>≥ {minDur}s</span>
-                                <span
-                                  className={
-                                    catShots.length > 0
-                                      ? "text-emerald-400 font-bold"
-                                      : "text-slate-600"
-                                  }
-                                >
-                                  {catShots.length > 0 ? "✓ Sẵn sàng" : "Trống"}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Inline Scene Inspector / Accordion View */}
-                      {splitEditingCategory && (
-                        <div className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-200">
-                          {splitCatShots.length === 0 ? (
-                            /* EMPTY STATE */
-                            <div className="py-6 text-center space-y-2">
-                              <p className="text-xs text-slate-400">
-                                Chưa có cảnh nào được gán cho nhóm{" "}
-                                <span className="text-indigo-400 font-bold uppercase">
-                                  {splitEditingCategory}
-                                </span>
-                                .
-                              </p>
+                {/* FULL SLICER STUDIO WORKSPACE (GRID + 100% WIDTH EXPORT CARD) */}
+                {state?.shots && state.shots.length > 0 && (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                      {/* ======================================================== */}
+                      {/* LEFT COLUMN (7/12): 5 CATEGORY CARDS + INLINE INSPECTOR */}
+                      {/* ======================================================== */}
+                      <div className="lg:col-span-7 space-y-4">
+                        {/* 5 Category Cards Header & Action */}
+                        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-indigo-400" />
+                              <h3 className="text-sm font-bold text-white">
+                                Kho video theo 5 category (đã tách từ video gốc)
+                              </h3>
+                            </div>
+                            <PermissionGate module="split" action="edit">
                               <button
-                                type="button"
                                 onClick={() => {
+                                  const lastEnd =
+                                    state.shots[state.shots.length - 1]?.end ||
+                                    0;
                                   const maxDur =
                                     state.sourceVideo?.duration || 30;
+                                  const newBegin =
+                                    lastEnd < maxDur - 1
+                                      ? lastEnd
+                                      : Math.max(0, maxDur - 4);
+                                  const newEnd =
+                                    Math.round(
+                                      Math.min(maxDur, newBegin + 4) * 10,
+                                    ) / 10;
+                                  const catToAssign =
+                                    splitEditingCategory || "product";
                                   const newShot: Shot = {
                                     id: `shot_${Date.now()}`,
                                     sourceVideoId:
                                       state.sourceVideo?.id || "src_vid",
-                                    label: `Cảnh ${splitEditingCategory.toUpperCase()}`,
-                                    begin: 0,
-                                    end: Math.min(
-                                      maxDur,
-                                      categoryMinDurations[
-                                        splitEditingCategory
-                                      ] || 4
-                                    ),
-                                    rawBegin: 0,
-                                    rawEnd: Math.min(
-                                      maxDur,
-                                      categoryMinDurations[
-                                        splitEditingCategory
-                                      ] || 4
-                                    ),
-                                    category: splitEditingCategory,
+                                    label: `Cảnh #${state.shots.length + 1}`,
+                                    begin: Math.round(newBegin * 10) / 10,
+                                    end: newEnd,
+                                    rawBegin: Math.round(newBegin * 10) / 10,
+                                    rawEnd: newEnd,
+                                    category: catToAssign,
                                     edits: {
                                       flipH: false,
                                       lockFlipH: false,
@@ -3760,59 +3686,147 @@ export default function StudioWorkspace({
                                     shots: [...state.shots, newShot],
                                   });
                                   handleSelectSplitShot(newShot);
+                                  setSplitEditingCategory(catToAssign);
                                   setAccordionShotId(newShot.id);
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20"
+                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition"
                               >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>
-                                  + Tạo cảnh mới cho {splitEditingCategory}
-                                </span>
+                                <Plus className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>Thêm shot thủ công</span>
                               </button>
-                            </div>
-                          ) : (
-                            /* LIST OF SHOT CARDS WITH ACCORDIONS */
-                            <div className="space-y-3">
-                              {/* List Header Bar */}
-                              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-indigo-300 uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30">
-                                    Nhóm {splitEditingCategory}
-                                  </span>
-                                  <span className="text-xs text-slate-300 font-semibold">
-                                    Danh sách {splitCatShots.length} cảnh
-                                  </span>
-                                </div>
+                            </PermissionGate>
+                          </div>
 
-                                <div className="flex items-center gap-2">
+                          {/* 5 Slots Badges / Category Cards */}
+                          <div className="grid grid-cols-5 gap-1.5">
+                            {SHOT_CATEGORIES.map((cat) => {
+                              const catShots = state.shots.filter(
+                                (s) => s.category === cat.id,
+                              );
+                              const isCatActive =
+                                splitEditingCategory === cat.id;
+                              const minDur =
+                                categoryMinDurations[cat.id] ?? 3.0;
+                              const totalDur = catShots.reduce(
+                                (acc, s) =>
+                                  acc +
+                                  (s.end - s.begin) / (s.edits.speed || 1),
+                                0,
+                              );
+
+                              return (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isCatActive) {
+                                      setSplitEditingCategory(null);
+                                      setAccordionShotId(null);
+                                    } else {
+                                      setSplitEditingCategory(cat.id);
+                                      setAccordionShotId(null);
+                                      const currentCatShots =
+                                        state.shots.filter(
+                                          (s) => s.category === cat.id,
+                                        );
+                                      if (currentCatShots.length > 0) {
+                                        handleSelectSplitShot(
+                                          currentCatShots[0],
+                                        );
+                                      }
+                                    }
+                                  }}
+                                  className={`p-2 rounded-xl text-left border text-[10px] transition cursor-pointer flex flex-col justify-between ${
+                                    isCatActive
+                                      ? "bg-indigo-950/70 border-indigo-500 ring-2 ring-indigo-500/50 shadow-md shadow-indigo-500/20"
+                                      : "bg-slate-950/80 border-slate-800 hover:border-slate-700"
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="font-bold text-slate-200 uppercase flex items-center justify-between">
+                                      <span
+                                        className={
+                                          isCatActive
+                                            ? "text-indigo-300 font-extrabold"
+                                            : ""
+                                        }
+                                      >
+                                        {cat.id}
+                                      </span>
+                                      <span
+                                        className={`font-mono font-bold ${
+                                          isCatActive
+                                            ? "text-indigo-300"
+                                            : "text-slate-300"
+                                        }`}
+                                      >
+                                        {catShots.length > 0
+                                          ? `${totalDur.toFixed(1)}s`
+                                          : "0s"}
+                                      </span>
+                                    </div>
+                                    <div className="text-slate-400 truncate mt-1 text-[9px] font-medium">
+                                      {catShots.length > 0
+                                        ? `${catShots.length} cảnh`
+                                        : "Chưa có"}
+                                    </div>
+                                  </div>
+                                  <div className="font-mono text-[9px] text-slate-500 mt-1.5 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+                                    <span>≥ {minDur}s</span>
+                                    <span
+                                      className={
+                                        catShots.length > 0
+                                          ? "text-emerald-400 font-bold"
+                                          : "text-slate-600"
+                                      }
+                                    >
+                                      {catShots.length > 0
+                                        ? "✓ Sẵn sàng"
+                                        : "Trống"}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Inline Scene Inspector / Accordion View */}
+                          {splitEditingCategory && (
+                            <div className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3 animate-in fade-in duration-200">
+                              {splitCatShots.length === 0 ? (
+                                /* EMPTY STATE */
+                                <div className="py-6 text-center space-y-2">
+                                  <p className="text-xs text-slate-400">
+                                    Chưa có cảnh nào được gán cho nhóm{" "}
+                                    <span className="text-indigo-400 font-bold uppercase">
+                                      {splitEditingCategory}
+                                    </span>
+                                    .
+                                  </p>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const lastEnd =
-                                        state.shots[state.shots.length - 1]
-                                          ?.end || 0;
                                       const maxDur =
                                         state.sourceVideo?.duration || 30;
-                                      const newBegin =
-                                        lastEnd < maxDur - 1
-                                          ? lastEnd
-                                          : Math.max(0, maxDur - 4);
-                                      const newEnd =
-                                        Math.round(
-                                          Math.min(maxDur, newBegin + 4) * 10
-                                        ) / 10;
                                       const newShot: Shot = {
                                         id: `shot_${Date.now()}`,
                                         sourceVideoId:
                                           state.sourceVideo?.id || "src_vid",
-                                        label: `Cảnh ${splitEditingCategory.toUpperCase()} #${
-                                          splitCatShots.length + 1
-                                        }`,
-                                        begin: Math.round(newBegin * 10) / 10,
-                                        end: newEnd,
-                                        rawBegin:
-                                          Math.round(newBegin * 10) / 10,
-                                        rawEnd: newEnd,
+                                        label: `Cảnh ${splitEditingCategory.toUpperCase()}`,
+                                        begin: 0,
+                                        end: Math.min(
+                                          maxDur,
+                                          categoryMinDurations[
+                                            splitEditingCategory
+                                          ] || 4,
+                                        ),
+                                        rawBegin: 0,
+                                        rawEnd: Math.min(
+                                          maxDur,
+                                          categoryMinDurations[
+                                            splitEditingCategory
+                                          ] || 4,
+                                        ),
                                         category: splitEditingCategory,
                                         edits: {
                                           flipH: false,
@@ -3828,1054 +3842,1346 @@ export default function StudioWorkspace({
                                       handleSelectSplitShot(newShot);
                                       setAccordionShotId(newShot.id);
                                     }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition shadow-sm shadow-indigo-600/20"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20"
                                   >
-                                    <Plus className="w-3 h-3" />
-                                    <span>Thêm cảnh</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSplitEditingCategory(null);
-                                      setAccordionShotId(null);
-                                    }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 border border-transparent hover:border-indigo-500/30 transition"
-                                    title="Thu gọn bảng"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>
+                                      + Tạo cảnh mới cho {splitEditingCategory}
+                                    </span>
                                   </button>
                                 </div>
-                              </div>
+                              ) : (
+                                /* LIST OF SHOT CARDS WITH ACCORDIONS */
+                                <div className="space-y-3">
+                                  {/* List Header Bar */}
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-indigo-300 uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30">
+                                        Nhóm {splitEditingCategory}
+                                      </span>
+                                      <span className="text-xs text-slate-300 font-semibold">
+                                        Danh sách {splitCatShots.length} cảnh
+                                      </span>
+                                    </div>
 
-                              {/* Scrollable list of cards */}
-                              <div className="max-h-[550px] overflow-y-auto space-y-2.5 pr-1">
-                                {splitCatShots.map((shot, sIdx) => {
-                                  const isSelected = shot.id === selectedShotId;
-                                  const isAccordionOpen =
-                                    shot.id === accordionShotId;
-                                  const rawDur = shot.end - shot.begin;
-                                  const speed = shot.edits.speed || 1.0;
-                                  const effectiveDur = (rawDur / speed).toFixed(
-                                    1
-                                  );
-                                  const minDur =
-                                    categoryMinDurations[
-                                      splitEditingCategory
-                                    ] ?? 3.0;
-                                  const isSlowMo = speed < 0.999;
-
-                                  return (
-                                    <div key={shot.id} className="space-y-2">
-                                      {/* Shot Card Header / Row */}
-                                      <div
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
                                         onClick={() => {
-                                          handleSelectSplitShot(shot);
+                                          const lastEnd =
+                                            state.shots[state.shots.length - 1]
+                                              ?.end || 0;
+                                          const maxDur =
+                                            state.sourceVideo?.duration || 30;
+                                          const newBegin =
+                                            lastEnd < maxDur - 1
+                                              ? lastEnd
+                                              : Math.max(0, maxDur - 4);
+                                          const newEnd =
+                                            Math.round(
+                                              Math.min(maxDur, newBegin + 4) *
+                                                10,
+                                            ) / 10;
+                                          const newShot: Shot = {
+                                            id: `shot_${Date.now()}`,
+                                            sourceVideoId:
+                                              state.sourceVideo?.id ||
+                                              "src_vid",
+                                            label: `Cảnh ${splitEditingCategory.toUpperCase()} #${
+                                              splitCatShots.length + 1
+                                            }`,
+                                            begin:
+                                              Math.round(newBegin * 10) / 10,
+                                            end: newEnd,
+                                            rawBegin:
+                                              Math.round(newBegin * 10) / 10,
+                                            rawEnd: newEnd,
+                                            category: splitEditingCategory,
+                                            edits: {
+                                              flipH: false,
+                                              lockFlipH: false,
+                                              speed: 1,
+                                              zoom: false,
+                                            },
+                                          };
+                                          persistState({
+                                            ...state,
+                                            shots: [...state.shots, newShot],
+                                          });
+                                          handleSelectSplitShot(newShot);
+                                          setAccordionShotId(newShot.id);
                                         }}
-                                        className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition select-none ${
-                                          isSelected
-                                            ? "bg-slate-900 border-indigo-500/80 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/40"
-                                            : "bg-slate-950/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60"
-                                        }`}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition shadow-sm shadow-indigo-600/20"
                                       >
-                                        {/* Left: Index, Label, Timestamps, Badges */}
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                          <span
-                                            className={`w-6 h-6 rounded-lg border text-xs font-mono font-bold flex items-center justify-center shrink-0 ${
-                                              isSelected
-                                                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/50"
-                                                : "bg-slate-900 border-slate-700 text-slate-300"
-                                            }`}
-                                          >
-                                            #{sIdx + 1}
-                                          </span>
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-xs font-bold text-white truncate">
-                                                {shot.label}
-                                              </span>
-                                              {shot.edits.flipH && (
-                                                <span className="px-1.5 py-0.2 rounded bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 text-[9px] font-semibold">
-                                                  Lật gương
-                                                </span>
-                                              )}
-                                              {isSlowMo && (
-                                                <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-mono">
-                                                  {speed}x
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5">
-                                              <span>
-                                                {shot.begin.toFixed(1)}s →{" "}
-                                                {shot.end.toFixed(1)}s
-                                              </span>
-                                              <span>•</span>
-                                              <span
-                                                className={`font-bold ${
-                                                  parseFloat(effectiveDur) >=
-                                                  minDur
-                                                    ? "text-emerald-400"
-                                                    : "text-amber-400"
-                                                }`}
-                                              >
-                                                ⏱️ {effectiveDur}s
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
+                                        <Plus className="w-3 h-3" />
+                                        <span>Thêm cảnh</span>
+                                      </button>
 
-                                        {/* Right: Chỉnh sửa & Xoá buttons */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSplitEditingCategory(null);
+                                          setAccordionShotId(null);
+                                        }}
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 border border-transparent hover:border-indigo-500/30 transition"
+                                        title="Thu gọn bảng"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Scrollable list of cards */}
+                                  <div className="max-h-[550px] overflow-y-auto space-y-2.5 pr-1">
+                                    {splitCatShots.map((shot, sIdx) => {
+                                      const isSelected =
+                                        shot.id === selectedShotId;
+                                      const isAccordionOpen =
+                                        shot.id === accordionShotId;
+                                      const rawDur = shot.end - shot.begin;
+                                      const speed = shot.edits.speed || 1.0;
+                                      const effectiveDur = (
+                                        rawDur / speed
+                                      ).toFixed(1);
+                                      const minDur =
+                                        categoryMinDurations[
+                                          splitEditingCategory
+                                        ] ?? 3.0;
+                                      const isSlowMo = speed < 0.999;
+
+                                      return (
                                         <div
-                                          className="flex items-center gap-1.5 shrink-0"
-                                          onClick={(e) => e.stopPropagation()}
+                                          key={shot.id}
+                                          className="space-y-2"
                                         >
-                                          <button
-                                            type="button"
+                                          {/* Shot Card Header / Row */}
+                                          <div
                                             onClick={() => {
                                               handleSelectSplitShot(shot);
-                                              setAccordionShotId((prev) =>
-                                                prev === shot.id
-                                                  ? null
-                                                  : shot.id
-                                              );
                                             }}
-                                            className={`p-1.5 rounded-lg transition ${
-                                              isAccordionOpen
-                                                ? "text-indigo-300 bg-indigo-500/20 border border-indigo-500/40"
-                                                : "text-slate-400 hover:text-indigo-300 hover:bg-slate-800"
+                                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition select-none ${
+                                              isSelected
+                                                ? "bg-slate-900 border-indigo-500/80 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/40"
+                                                : "bg-slate-950/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60"
                                             }`}
-                                            title={
-                                              isAccordionOpen
-                                                ? "Đóng chỉnh sửa"
-                                                : "Chỉnh sửa cảnh này"
-                                            }
                                           >
-                                            <Edit3 className="w-3.5 h-3.5" />
-                                          </button>
-
-                                          <PermissionGate module="split" action="edit">
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                handleDeleteShot(shot.id);
-                                                if (accordionShotId === shot.id) {
-                                                  setAccordionShotId(null);
-                                                }
-                                              }}
-                                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
-                                              title="Xoá cảnh này"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </PermissionGate>
-                                        </div>
-                                      </div>
-
-                                      {/* Accordion Settings Panel */}
-                                      {isAccordionOpen &&
-                                        splitShotTrimInfo &&
-                                        accordionShot &&
-                                        accordionShot.id === shot.id && (
-                                          <div className="pt-2 space-y-3 animate-in fade-in duration-200">
-                                            {/* Header: Title, Mirror toggle, Play, Close X */}
-                                            <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
-                                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                <span className="text-xs font-bold text-indigo-300 uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 shrink-0">
-                                                  Cảnh {splitEditingCategory}
-                                                </span>
-                                                <input
-                                                  type="text"
-                                                  disabled={!canEditSplit}
-                                                  value={accordionShot.label}
-                                                  onChange={(e) => {
-                                                    const updated =
-                                                      state.shots.map((s) =>
-                                                        s.id ===
-                                                        accordionShot.id
-                                                          ? {
-                                                              ...s,
-                                                              label:
-                                                                e.target.value,
-                                                            }
-                                                          : s
-                                                      );
-                                                    persistState({
-                                                      ...state,
-                                                      shots: updated,
-                                                    });
-                                                  }}
-                                                  className="bg-transparent text-xs font-bold text-slate-100 focus:outline-none border-b border-transparent focus:border-indigo-500 truncate flex-1 min-w-[120px] disabled:opacity-60 disabled:cursor-not-allowed"
-                                                  title={canEditSplit ? "Click để đổi tên cảnh" : "Chế độ chỉ xem"}
-                                                />
-                                                <span className="text-[10px] text-slate-400 font-mono hidden md:inline shrink-0">
-                                                  (Gốc:{" "}
-                                                  {splitShotTrimInfo.rawDuration.toFixed(
-                                                    1
+                                            {/* Left: Index, Label, Timestamps, Badges */}
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                              <span
+                                                className={`w-6 h-6 rounded-lg border text-xs font-mono font-bold flex items-center justify-center shrink-0 ${
+                                                  isSelected
+                                                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/50"
+                                                    : "bg-slate-900 border-slate-700 text-slate-300"
+                                                }`}
+                                              >
+                                                #{sIdx + 1}
+                                              </span>
+                                              <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs font-bold text-white truncate">
+                                                    {shot.label}
+                                                  </span>
+                                                  {shot.edits.flipH && (
+                                                    <span className="px-1.5 py-0.2 rounded bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 text-[9px] font-semibold">
+                                                      Lật gương
+                                                    </span>
                                                   )}
-                                                  s)
-                                                </span>
-                                              </div>
-
-                                              <div className="flex items-center gap-2 shrink-0">
-                                                {/* Mirror toggle button */}
-                                                <PermissionGate module="split" action="edit">
-                                                  <button
-                                                    type="button"
-                                                    disabled={!canEditSplit}
-                                                    onClick={() =>
-                                                      handleToggleFlipH(
-                                                        accordionShot.id
-                                                      )
-                                                    }
-                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold border transition ${
-                                                      accordionShot.edits.flipH
-                                                        ? "bg-indigo-600/30 text-indigo-300 border-indigo-500/60 shadow-sm"
-                                                        : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
-                                                    }`}
-                                                    title={
-                                                      accordionShot.edits.flipH
-                                                        ? "Đang lật gương"
-                                                        : "Lật gương ngang hình ảnh (Mirror)"
-                                                    }
-                                                  >
-                                                    <FlipHorizontal className="w-3.5 h-3.5" />
-                                                    <span>
-                                                      {accordionShot.edits.flipH
-                                                        ? "Đang lật gương"
-                                                        : "Lật gương"}
+                                                  {isSlowMo && (
+                                                    <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-mono">
+                                                      {speed}x
                                                     </span>
-                                                  </button>
-                                                </PermissionGate>
-
-                                                {/* Xem đoạn này button */}
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    handlePlayActiveShot(
-                                                      accordionShot
-                                                    )
-                                                  }
-                                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition"
-                                                  title="Phát thử đoạn video này trên player"
-                                                >
-                                                  <Play className="w-3 h-3 text-indigo-400 fill-current" />
-                                                  <span>Xem đoạn này</span>
-                                                </button>
-
-                                                {/* Close Accordion Button */}
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    setAccordionShotId(null)
-                                                  }
-                                                  className="p-1 rounded-md text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 transition"
-                                                  title="Đóng bảng chỉnh sửa"
-                                                >
-                                                  <X className="w-3.5 h-3.5" />
-                                                </button>
-                                              </div>
-                                            </div>
-
-                                            {/* 3-Column Grid: Speed Controls (1 col) + Apple Trimmer (2 cols) */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                                              {/* Speed Controls */}
-                                              <div className="space-y-1.5 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
-                                                <div>
-                                                  <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between mb-1.5">
-                                                    <span>Tốc độ phát:</span>
-                                                    <span className="text-indigo-400 font-mono font-bold">
-                                                      {splitShotTrimInfo.speed}x
-                                                    </span>
-                                                  </label>
-                                                  <div className="flex items-center gap-1 flex-wrap mb-2">
-                                                    {[
-                                                      0.5, 0.75, 1.0, 1.25, 1.5,
-                                                      2.0,
-                                                    ].map((spd) => (
-                                                      <button
-                                                        key={spd}
-                                                        type="button"
-                                                        disabled={!canEditSplit}
-                                                        onClick={() =>
-                                                          handleUpdateShotEdits(
-                                                            accordionShot.id,
-                                                            {
-                                                              speed: spd,
-                                                            }
-                                                          )
-                                                        }
-                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition ${
-                                                          splitShotTrimInfo.speed ===
-                                                          spd
-                                                            ? "bg-indigo-600 text-white font-bold"
-                                                            : "bg-slate-800 hover:bg-slate-700 text-slate-300"
-                                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                      >
-                                                        {spd}x
-                                                      </button>
-                                                    ))}
-                                                  </div>
-                                                  <input
-                                                    type="range"
-                                                    min="0.25"
-                                                    max="3.0"
-                                                    step="0.05"
-                                                    disabled={!canEditSplit}
-                                                    value={
-                                                      splitShotTrimInfo.speed
-                                                    }
-                                                    onChange={(e) =>
-                                                      handleUpdateShotEdits(
-                                                        accordionShot.id,
-                                                        {
-                                                          speed:
-                                                            parseFloat(
-                                                              e.target.value
-                                                            ) || 1.0,
-                                                        }
-                                                      )
-                                                    }
-                                                    className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                                  />
+                                                  )}
                                                 </div>
-                                                <p className="text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-800/80">
-                                                  Cắt{" "}
-                                                  {splitShotTrimInfo.cutDur.toFixed(
-                                                    1
-                                                  )}
-                                                  s ÷ {splitShotTrimInfo.speed}x
-                                                  ={" "}
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5">
+                                                  <span>
+                                                    {shot.begin.toFixed(1)}s →{" "}
+                                                    {shot.end.toFixed(1)}s
+                                                  </span>
+                                                  <span>•</span>
                                                   <span
                                                     className={`font-bold ${
-                                                      splitShotTrimInfo.effectiveDur >=
-                                                      splitShotTrimInfo.minDur
+                                                      parseFloat(
+                                                        effectiveDur,
+                                                      ) >= minDur
                                                         ? "text-emerald-400"
                                                         : "text-amber-400"
                                                     }`}
                                                   >
-                                                    {splitShotTrimInfo.effectiveDur.toFixed(
-                                                      1
-                                                    )}
-                                                    s
+                                                    ⏱️ {effectiveDur}s
                                                   </span>
-                                                  {splitShotTrimInfo.effectiveDur <
-                                                    splitShotTrimInfo.minDur && (
-                                                    <span className="text-[9px] text-amber-400/90 ml-1">
-                                                      (&lt;
-                                                      {splitShotTrimInfo.minDur}
-                                                      s tối thiểu)
-                                                    </span>
-                                                  )}
-                                                </p>
-                                              </div>
-
-                                              {/* Apple Photos / iPhone Dual-Handle Video Trimmer (2 cols) */}
-                                              <div className="sm:col-span-2">
-                                                <IPhoneVideoTrimmer
-                                                  videoBegin={
-                                                    accordionShot.begin
-                                                  }
-                                                  videoEnd={accordionShot.end}
-                                                  totalDuration={
-                                                    state.sourceVideo
-                                                      ?.duration ||
-                                                    accordionShot.end ||
-                                                    10
-                                                  }
-                                                  rawBegin={
-                                                    accordionShot.rawBegin ??
-                                                    accordionShot.begin
-                                                  }
-                                                  rawEnd={
-                                                    accordionShot.rawEnd ??
-                                                    accordionShot.end
-                                                  }
-                                                  onChange={(
-                                                    newBegin,
-                                                    newEnd
-                                                  ) =>
-                                                    handleUpdateShotTrim(
-                                                      accordionShot.id,
-                                                      newBegin,
-                                                      newEnd
-                                                    )
-                                                  }
-                                                  onScrubStart={() => {
-                                                    handleStopSlicer();
-                                                  }}
-                                                  onScrubMove={(sourceSec) => {
-                                                    const targetTime = Math.max(
-                                                      0,
-                                                      Math.min(
-                                                        state.sourceVideo
-                                                          ?.duration || 0,
-                                                        sourceSec
-                                                      )
-                                                    );
-                                                    if (
-                                                      slicerVideoRef.current
-                                                    ) {
-                                                      slicerVideoRef.current.currentTime =
-                                                        targetTime;
-                                                    }
-                                                    setSlicerTime(targetTime);
-                                                  }}
-                                                  onScrubEnd={() => {}}
-                                                  onSeekPreview={(
-                                                    targetSec
-                                                  ) => {
-                                                    const targetTime = Math.max(
-                                                      0,
-                                                      Math.min(
-                                                        state.sourceVideo
-                                                          ?.duration || 0,
-                                                        targetSec
-                                                      )
-                                                    );
-                                                    if (
-                                                      slicerVideoRef.current
-                                                    ) {
-                                                      slicerVideoRef.current.currentTime =
-                                                        targetTime;
-                                                    }
-                                                    setSlicerTime(targetTime);
-                                                  }}
-                                                />
+                                                </div>
                                               </div>
                                             </div>
 
-                                            {/* Advanced Options (Khoá chữ, Ken Burns, Gán Category, Xoá) - Mặc định mở luôn */}
-                                            <div className="pt-2 border-t border-slate-800/80">
-                                              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-2.5">
-                                                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
-                                                  <span className="flex items-center gap-1.5">
-                                                    <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                                                    <span>
-                                                      Tùy chọn nâng cao
-                                                    </span>
-                                                  </span>
-                                                </div>
+                                            {/* Right: Chỉnh sửa & Xoá buttons */}
+                                            <div
+                                              className="flex items-center gap-1.5 shrink-0"
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                            >
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  handleSelectSplitShot(shot);
+                                                  setAccordionShotId((prev) =>
+                                                    prev === shot.id
+                                                      ? null
+                                                      : shot.id,
+                                                  );
+                                                }}
+                                                className={`p-1.5 rounded-lg transition ${
+                                                  isAccordionOpen
+                                                    ? "text-indigo-300 bg-indigo-500/20 border border-indigo-500/40"
+                                                    : "text-slate-400 hover:text-indigo-300 hover:bg-slate-800"
+                                                }`}
+                                                title={
+                                                  isAccordionOpen
+                                                    ? "Đóng chỉnh sửa"
+                                                    : "Chỉnh sửa cảnh này"
+                                                }
+                                              >
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                              </button>
 
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                                                  {/* Lock flipH */}
-                                                  <PermissionGate module="split" action="edit">
+                                              <PermissionGate
+                                                module="split"
+                                                action="edit"
+                                              >
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    handleDeleteShot(shot.id);
+                                                    if (
+                                                      accordionShotId ===
+                                                      shot.id
+                                                    ) {
+                                                      setAccordionShotId(null);
+                                                    }
+                                                  }}
+                                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                                                  title="Xoá cảnh này"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                              </PermissionGate>
+                                            </div>
+                                          </div>
+
+                                          {/* Accordion Settings Panel */}
+                                          {isAccordionOpen &&
+                                            splitShotTrimInfo &&
+                                            accordionShot &&
+                                            accordionShot.id === shot.id && (
+                                              <div className="pt-2 space-y-3 animate-in fade-in duration-200">
+                                                {/* Header: Title, Mirror toggle, Play, Close X */}
+                                                <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2">
+                                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                    <span className="text-xs font-bold text-indigo-300 uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/30 shrink-0">
+                                                      Cảnh{" "}
+                                                      {splitEditingCategory}
+                                                    </span>
+                                                    <input
+                                                      type="text"
+                                                      disabled={!canEditSplit}
+                                                      value={
+                                                        accordionShot.label
+                                                      }
+                                                      onChange={(e) => {
+                                                        const updated =
+                                                          state.shots.map(
+                                                            (s) =>
+                                                              s.id ===
+                                                              accordionShot.id
+                                                                ? {
+                                                                    ...s,
+                                                                    label:
+                                                                      e.target
+                                                                        .value,
+                                                                  }
+                                                                : s,
+                                                          );
+                                                        persistState({
+                                                          ...state,
+                                                          shots: updated,
+                                                        });
+                                                      }}
+                                                      className="bg-transparent text-xs font-bold text-slate-100 focus:outline-none border-b border-transparent focus:border-indigo-500 truncate flex-1 min-w-[120px] disabled:opacity-60 disabled:cursor-not-allowed"
+                                                      title={
+                                                        canEditSplit
+                                                          ? "Click để đổi tên cảnh"
+                                                          : "Chế độ chỉ xem"
+                                                      }
+                                                    />
+                                                    <span className="text-[10px] text-slate-400 font-mono hidden md:inline shrink-0">
+                                                      (Gốc:{" "}
+                                                      {splitShotTrimInfo.rawDuration.toFixed(
+                                                        1,
+                                                      )}
+                                                      s)
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="flex items-center gap-2 shrink-0">
+                                                    {/* Mirror toggle button */}
+                                                    <PermissionGate
+                                                      module="split"
+                                                      action="edit"
+                                                    >
+                                                      <button
+                                                        type="button"
+                                                        disabled={!canEditSplit}
+                                                        onClick={() =>
+                                                          handleToggleFlipH(
+                                                            accordionShot.id,
+                                                          )
+                                                        }
+                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold border transition ${
+                                                          accordionShot.edits
+                                                            .flipH
+                                                            ? "bg-indigo-600/30 text-indigo-300 border-indigo-500/60 shadow-sm"
+                                                            : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                                                        }`}
+                                                        title={
+                                                          accordionShot.edits
+                                                            .flipH
+                                                            ? "Đang lật gương"
+                                                            : "Lật gương ngang hình ảnh (Mirror)"
+                                                        }
+                                                      >
+                                                        <FlipHorizontal className="w-3.5 h-3.5" />
+                                                        <span>
+                                                          {accordionShot.edits
+                                                            .flipH
+                                                            ? "Đang lật gương"
+                                                            : "Lật gương"}
+                                                        </span>
+                                                      </button>
+                                                    </PermissionGate>
+
+                                                    {/* Xem đoạn này button */}
                                                     <button
                                                       type="button"
                                                       onClick={() =>
-                                                        handleToggleLockFlipH(
-                                                          accordionShot.id
+                                                        handlePlayActiveShot(
+                                                          accordionShot,
                                                         )
                                                       }
-                                                      className={`p-2 rounded-lg border flex items-center justify-between transition ${
-                                                        accordionShot.edits
-                                                          .lockFlipH
-                                                          ? "bg-amber-500/20 border-amber-500/50 text-amber-200"
-                                                          : "bg-slate-900 border-slate-800 text-slate-300"
-                                                      }`}
-                                                      title="Khoá không cho phép lật ngang nếu cảnh có chữ/tên thương hiệu"
+                                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition"
+                                                      title="Phát thử đoạn video này trên player"
                                                     >
-                                                      <span className="flex items-center gap-1 font-medium text-[11px]">
-                                                        {accordionShot.edits
-                                                          .lockFlipH ? (
-                                                          <Lock className="w-3.5 h-3.5 text-amber-400" />
-                                                        ) : (
-                                                          <Unlock className="w-3.5 h-3.5 text-slate-500" />
-                                                        )}
-                                                        Khoá chữ (L)
-                                                      </span>
-                                                      <span className="font-mono text-[10px] font-bold">
-                                                        {accordionShot.edits
-                                                          .lockFlipH
-                                                          ? "LOCKED"
-                                                          : "FREE"}
-                                                      </span>
+                                                      <Play className="w-3 h-3 text-indigo-400 fill-current" />
+                                                      <span>Xem đoạn này</span>
                                                     </button>
-                                                  </PermissionGate>
 
-                                                  {/* Ken Burns Zoom */}
-                                                  <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between">
-                                                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                                      <span>
-                                                        Ken Burns zoom
-                                                      </span>
-                                                      <span className="font-mono text-slate-200 font-bold">
-                                                        {typeof accordionShot
-                                                          .edits.zoom ===
-                                                        "object"
-                                                          ? `${accordionShot.edits.zoom.depth}x`
-                                                          : accordionShot.edits
-                                                              .zoom
-                                                          ? "1.2x"
-                                                          : "Tắt"}
-                                                      </span>
-                                                    </div>
-                                                    <input
-                                                      type="range"
-                                                      min="1.0"
-                                                      max="1.5"
-                                                      step="0.05"
-                                                      disabled={!canEditSplit}
-                                                      value={
-                                                        typeof accordionShot
-                                                          .edits.zoom ===
-                                                        "object"
-                                                          ? accordionShot.edits
-                                                              .zoom.depth
-                                                          : accordionShot.edits
-                                                              .zoom
-                                                          ? 1.2
-                                                          : 1.0
+                                                    {/* Close Accordion Button */}
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        setAccordionShotId(null)
                                                       }
-                                                      onChange={(e) => {
-                                                        const depth = Number(
-                                                          e.target.value
-                                                        );
-                                                        handleSetZoom(
-                                                          accordionShot.id,
-                                                          depth <= 1.01
-                                                            ? false
-                                                            : depth
-                                                        );
-                                                      }}
-                                                      className="w-full accent-indigo-500 h-1 bg-slate-800 rounded mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    />
+                                                      className="p-1 rounded-md text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/20 transition"
+                                                      title="Đóng bảng chỉnh sửa"
+                                                    >
+                                                      <X className="w-3.5 h-3.5" />
+                                                    </button>
                                                   </div>
-
-                                                  {/* Delete current shot */}
-                                                  <PermissionGate module="split" action="edit">
-                                                    <div className="flex items-center justify-end">
-                                                      <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                          handleDeleteShot(
-                                                            accordionShot.id
-                                                          );
-                                                          setAccordionShotId(
-                                                            null
-                                                          );
-                                                        }}
-                                                        className="w-full py-2 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                                                        title="Xoá cảnh này khỏi danh sách"
-                                                      >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                        <span>Xoá cảnh này</span>
-                                                      </button>
-                                                    </div>
-                                                  </PermissionGate>
                                                 </div>
 
-                                                {/* Reassign Category buttons */}
-                                                <PermissionGate module="split" action="edit">
-                                                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-800/80">
-                                                    <span className="text-[10px] text-slate-400 shrink-0 font-medium">
-                                                      Chuyển sang nhóm:
-                                                    </span>
-                                                    <div className="flex items-center gap-1 flex-wrap">
-                                                      {SHOT_CATEGORIES.map(
-                                                        (c) => (
+                                                {/* 3-Column Grid: Speed Controls (1 col) + Apple Trimmer (2 cols) */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                                  {/* Speed Controls */}
+                                                  <div className="space-y-1.5 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                                                    <div>
+                                                      <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between mb-1.5">
+                                                        <span>
+                                                          Tốc độ phát:
+                                                        </span>
+                                                        <span className="text-indigo-400 font-mono font-bold">
+                                                          {
+                                                            splitShotTrimInfo.speed
+                                                          }
+                                                          x
+                                                        </span>
+                                                      </label>
+                                                      <div className="flex items-center gap-1 flex-wrap mb-2">
+                                                        {[
+                                                          0.5, 0.75, 1.0, 1.25,
+                                                          1.5, 2.0,
+                                                        ].map((spd) => (
                                                           <button
-                                                            key={c.id}
+                                                            key={spd}
+                                                            type="button"
+                                                            disabled={
+                                                              !canEditSplit
+                                                            }
+                                                            onClick={() =>
+                                                              handleUpdateShotEdits(
+                                                                accordionShot.id,
+                                                                {
+                                                                  speed: spd,
+                                                                },
+                                                              )
+                                                            }
+                                                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition ${
+                                                              splitShotTrimInfo.speed ===
+                                                              spd
+                                                                ? "bg-indigo-600 text-white font-bold"
+                                                                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                          >
+                                                            {spd}x
+                                                          </button>
+                                                        ))}
+                                                      </div>
+                                                      <input
+                                                        type="range"
+                                                        min="0.25"
+                                                        max="3.0"
+                                                        step="0.05"
+                                                        disabled={!canEditSplit}
+                                                        value={
+                                                          splitShotTrimInfo.speed
+                                                        }
+                                                        onChange={(e) =>
+                                                          handleUpdateShotEdits(
+                                                            accordionShot.id,
+                                                            {
+                                                              speed:
+                                                                parseFloat(
+                                                                  e.target
+                                                                    .value,
+                                                                ) || 1.0,
+                                                            },
+                                                          )
+                                                        }
+                                                        className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                                      />
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-800/80">
+                                                      Cắt{" "}
+                                                      {splitShotTrimInfo.cutDur.toFixed(
+                                                        1,
+                                                      )}
+                                                      s ÷{" "}
+                                                      {splitShotTrimInfo.speed}x
+                                                      ={" "}
+                                                      <span
+                                                        className={`font-bold ${
+                                                          splitShotTrimInfo.effectiveDur >=
+                                                          splitShotTrimInfo.minDur
+                                                            ? "text-emerald-400"
+                                                            : "text-amber-400"
+                                                        }`}
+                                                      >
+                                                        {splitShotTrimInfo.effectiveDur.toFixed(
+                                                          1,
+                                                        )}
+                                                        s
+                                                      </span>
+                                                      {splitShotTrimInfo.effectiveDur <
+                                                        splitShotTrimInfo.minDur && (
+                                                        <span className="text-[9px] text-amber-400/90 ml-1">
+                                                          (&lt;
+                                                          {
+                                                            splitShotTrimInfo.minDur
+                                                          }
+                                                          s tối thiểu)
+                                                        </span>
+                                                      )}
+                                                    </p>
+                                                  </div>
+
+                                                  {/* Apple Photos / iPhone Dual-Handle Video Trimmer (2 cols) */}
+                                                  <div className="sm:col-span-2">
+                                                    <IPhoneVideoTrimmer
+                                                      videoBegin={
+                                                        accordionShot.begin
+                                                      }
+                                                      videoEnd={
+                                                        accordionShot.end
+                                                      }
+                                                      totalDuration={
+                                                        state.sourceVideo
+                                                          ?.duration ||
+                                                        accordionShot.end ||
+                                                        10
+                                                      }
+                                                      rawBegin={
+                                                        accordionShot.rawBegin ??
+                                                        accordionShot.begin
+                                                      }
+                                                      rawEnd={
+                                                        accordionShot.rawEnd ??
+                                                        accordionShot.end
+                                                      }
+                                                      onChange={(
+                                                        newBegin,
+                                                        newEnd,
+                                                      ) =>
+                                                        handleUpdateShotTrim(
+                                                          accordionShot.id,
+                                                          newBegin,
+                                                          newEnd,
+                                                        )
+                                                      }
+                                                      onScrubStart={() => {
+                                                        handleStopSlicer();
+                                                      }}
+                                                      onScrubMove={(
+                                                        sourceSec,
+                                                      ) => {
+                                                        const targetTime =
+                                                          Math.max(
+                                                            0,
+                                                            Math.min(
+                                                              state.sourceVideo
+                                                                ?.duration || 0,
+                                                              sourceSec,
+                                                            ),
+                                                          );
+                                                        if (
+                                                          slicerVideoRef.current
+                                                        ) {
+                                                          slicerVideoRef.current.currentTime =
+                                                            targetTime;
+                                                        }
+                                                        setSlicerTime(
+                                                          targetTime,
+                                                        );
+                                                      }}
+                                                      onScrubEnd={() => {}}
+                                                      onSeekPreview={(
+                                                        targetSec,
+                                                      ) => {
+                                                        const targetTime =
+                                                          Math.max(
+                                                            0,
+                                                            Math.min(
+                                                              state.sourceVideo
+                                                                ?.duration || 0,
+                                                              targetSec,
+                                                            ),
+                                                          );
+                                                        if (
+                                                          slicerVideoRef.current
+                                                        ) {
+                                                          slicerVideoRef.current.currentTime =
+                                                            targetTime;
+                                                        }
+                                                        setSlicerTime(
+                                                          targetTime,
+                                                        );
+                                                      }}
+                                                    />
+                                                  </div>
+                                                </div>
+
+                                                {/* Advanced Options (Khoá chữ, Ken Burns, Gán Category, Xoá) - Mặc định mở luôn */}
+                                                <div className="pt-2 border-t border-slate-800/80">
+                                                  <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-2.5">
+                                                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                                                      <span className="flex items-center gap-1.5">
+                                                        <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                                                        <span>
+                                                          Tùy chọn nâng cao
+                                                        </span>
+                                                      </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                                                      {/* Lock flipH */}
+                                                      <PermissionGate
+                                                        module="split"
+                                                        action="edit"
+                                                      >
+                                                        <button
+                                                          type="button"
+                                                          onClick={() =>
+                                                            handleToggleLockFlipH(
+                                                              accordionShot.id,
+                                                            )
+                                                          }
+                                                          className={`p-2 rounded-lg border flex items-center justify-between transition ${
+                                                            accordionShot.edits
+                                                              .lockFlipH
+                                                              ? "bg-amber-500/20 border-amber-500/50 text-amber-200"
+                                                              : "bg-slate-900 border-slate-800 text-slate-300"
+                                                          }`}
+                                                          title="Khoá không cho phép lật ngang nếu cảnh có chữ/tên thương hiệu"
+                                                        >
+                                                          <span className="flex items-center gap-1 font-medium text-[11px]">
+                                                            {accordionShot.edits
+                                                              .lockFlipH ? (
+                                                              <Lock className="w-3.5 h-3.5 text-amber-400" />
+                                                            ) : (
+                                                              <Unlock className="w-3.5 h-3.5 text-slate-500" />
+                                                            )}
+                                                            Khoá chữ (L)
+                                                          </span>
+                                                          <span className="font-mono text-[10px] font-bold">
+                                                            {accordionShot.edits
+                                                              .lockFlipH
+                                                              ? "LOCKED"
+                                                              : "FREE"}
+                                                          </span>
+                                                        </button>
+                                                      </PermissionGate>
+
+                                                      {/* Ken Burns Zoom */}
+                                                      <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between">
+                                                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                                          <span>
+                                                            Ken Burns zoom
+                                                          </span>
+                                                          <span className="font-mono text-slate-200 font-bold">
+                                                            {typeof accordionShot
+                                                              .edits.zoom ===
+                                                            "object"
+                                                              ? `${accordionShot.edits.zoom.depth}x`
+                                                              : accordionShot
+                                                                    .edits.zoom
+                                                                ? "1.2x"
+                                                                : "Tắt"}
+                                                          </span>
+                                                        </div>
+                                                        <input
+                                                          type="range"
+                                                          min="1.0"
+                                                          max="1.5"
+                                                          step="0.05"
+                                                          disabled={
+                                                            !canEditSplit
+                                                          }
+                                                          value={
+                                                            typeof accordionShot
+                                                              .edits.zoom ===
+                                                            "object"
+                                                              ? accordionShot
+                                                                  .edits.zoom
+                                                                  .depth
+                                                              : accordionShot
+                                                                    .edits.zoom
+                                                                ? 1.2
+                                                                : 1.0
+                                                          }
+                                                          onChange={(e) => {
+                                                            const depth =
+                                                              Number(
+                                                                e.target.value,
+                                                              );
+                                                            handleSetZoom(
+                                                              accordionShot.id,
+                                                              depth <= 1.01
+                                                                ? false
+                                                                : depth,
+                                                            );
+                                                          }}
+                                                          className="w-full accent-indigo-500 h-1 bg-slate-800 rounded mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        />
+                                                      </div>
+
+                                                      {/* Delete current shot */}
+                                                      <PermissionGate
+                                                        module="split"
+                                                        action="edit"
+                                                      >
+                                                        <div className="flex items-center justify-end">
+                                                          <button
                                                             type="button"
                                                             onClick={() => {
-                                                              handleCategoryChange(
+                                                              handleDeleteShot(
                                                                 accordionShot.id,
-                                                                c.id
                                                               );
-                                                              setSplitEditingCategory(
-                                                                c.id
+                                                              setAccordionShotId(
+                                                                null,
                                                               );
                                                             }}
-                                                            disabled={
-                                                              !canEditSplit ||
-                                                              accordionShot.category ===
-                                                                c.id
-                                                            }
-                                                            className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition disabled:opacity-40 ${
-                                                              accordionShot.category ===
-                                                              c.id
-                                                                ? c.badgeClass
-                                                                : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200"
-                                                            }`}
+                                                            className="w-full py-2 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                                                            title="Xoá cảnh này khỏi danh sách"
                                                           >
-                                                            {c.hotkey}.{" "}
-                                                            {c.id.toUpperCase()}
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            <span>
+                                                              Xoá cảnh này
+                                                            </span>
                                                           </button>
-                                                        )
-                                                      )}
+                                                        </div>
+                                                      </PermissionGate>
                                                     </div>
+
+                                                    {/* Reassign Category buttons */}
+                                                    <PermissionGate
+                                                      module="split"
+                                                      action="edit"
+                                                    >
+                                                      <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-800/80">
+                                                        <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                                                          Chuyển sang nhóm:
+                                                        </span>
+                                                        <div className="flex items-center gap-1 flex-wrap">
+                                                          {SHOT_CATEGORIES.map(
+                                                            (c) => (
+                                                              <button
+                                                                key={c.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                  handleCategoryChange(
+                                                                    accordionShot.id,
+                                                                    c.id,
+                                                                  );
+                                                                  setSplitEditingCategory(
+                                                                    c.id,
+                                                                  );
+                                                                }}
+                                                                disabled={
+                                                                  !canEditSplit ||
+                                                                  accordionShot.category ===
+                                                                    c.id
+                                                                }
+                                                                className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition disabled:opacity-40 ${
+                                                                  accordionShot.category ===
+                                                                  c.id
+                                                                    ? c.badgeClass
+                                                                    : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200"
+                                                                }`}
+                                                              >
+                                                                {c.hotkey}.{" "}
+                                                                {c.id.toUpperCase()}
+                                                              </button>
+                                                            ),
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                    </PermissionGate>
                                                   </div>
-                                                </PermissionGate>
+                                                </div>
                                               </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                            )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ======================================================== */}
-                  {/* RIGHT COLUMN (5/12): VIDEO MONITOR 9:16 + TIMELINE RIBBON */}
-                  {/* ======================================================== */}
-                  <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-4 flex flex-col justify-between">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                          Màn hình duyệt cảnh (Source video monitor)
-                        </h3>
-                        <span className="text-xs font-mono text-indigo-400">
-                          {slicerTime.toFixed(1)}s /{" "}
-                          {(state.sourceVideo?.duration || 0).toFixed(1)}s
-                        </span>
                       </div>
 
-                      {/* 9:16 Video Canvas Player with live effects */}
-                      <div className="relative aspect-[9/16] max-h-[380px] mx-auto rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shadow-2xl">
-                        {sourceBlobUrl || state.sourceVideo?.localUrl ? (
-                          <video
-                            ref={slicerVideoRef}
-                            src={sourceBlobUrl || state.sourceVideo?.localUrl}
-                            playsInline
-                            onTimeUpdate={(e) => {
-                              const cur = e.currentTarget.currentTime;
-                              setSlicerTime(cur);
+                      {/* ======================================================== */}
+                      {/* RIGHT COLUMN (5/12): VIDEO MONITOR 9:16 + TIMELINE RIBBON */}
+                      {/* ======================================================== */}
+                      <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-4 flex flex-col justify-between">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                              Màn hình duyệt cảnh (Source video monitor)
+                            </h3>
+                            <span className="text-xs font-mono text-indigo-400">
+                              {slicerTime.toFixed(1)}s /{" "}
+                              {(state.sourceVideo?.duration || 0).toFixed(1)}s
+                            </span>
+                          </div>
 
-                              // If playing active shot only, stop or loop at shot.end
-                              if (playingShotOnly && selectedShot) {
-                                if (cur >= selectedShot.end) {
-                                  e.currentTarget.pause();
+                          {/* 9:16 Video Canvas Player with live effects */}
+                          <div className="relative aspect-[9/16] max-h-[380px] mx-auto rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shadow-2xl">
+                            {sourceBlobUrl || state.sourceVideo?.localUrl ? (
+                              <video
+                                ref={slicerVideoRef}
+                                src={
+                                  sourceBlobUrl || state.sourceVideo?.localUrl
+                                }
+                                playsInline
+                                onTimeUpdate={(e) => {
+                                  const cur = e.currentTarget.currentTime;
+                                  setSlicerTime(cur);
+
+                                  // If playing active shot only, stop or loop at shot.end
+                                  if (playingShotOnly && selectedShot) {
+                                    if (cur >= selectedShot.end) {
+                                      e.currentTarget.pause();
+                                      setIsPlayingSlicer(false);
+                                      setPlayingShotOnly(false);
+                                    }
+                                  }
+                                }}
+                                onEnded={() => {
                                   setIsPlayingSlicer(false);
                                   setPlayingShotOnly(false);
-                                }
-                              }
-                            }}
-                            onEnded={() => {
-                              setIsPlayingSlicer(false);
-                              setPlayingShotOnly(false);
-                            }}
-                            className="w-full h-full object-contain"
-                            style={{
-                              transform: selectedShot?.edits.flipH
-                                ? "scaleX(-1)"
-                                : undefined,
-                            }}
-                          />
-                        ) : (
-                          <div className="p-6 text-center text-xs text-slate-500">
-                            Chưa nạp video
-                          </div>
-                        )}
+                                }}
+                                className="w-full h-full object-contain"
+                                style={{
+                                  transform: selectedShot?.edits.flipH
+                                    ? "scaleX(-1)"
+                                    : undefined,
+                                }}
+                              />
+                            ) : (
+                              <div className="p-6 text-center text-xs text-slate-500">
+                                Chưa nạp video
+                              </div>
+                            )}
 
-                        {/* Active Shot Badge Overlay */}
-                        {selectedShot && (
-                          <div className="absolute top-2 left-2 z-10 px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-black/60 backdrop-blur-sm text-white border-white/20">
-                            Đang chọn: {selectedShot.label} (
-                            {selectedShot.category?.toUpperCase()})
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Playback Controls Bar */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
-                        <div className="flex items-center gap-1.5">
-                          {isPlayingSlicer ? (
-                            <button
-                              onClick={handleStopSlicer}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 hover:bg-amber-500/30"
-                            >
-                              <Pause className="w-3.5 h-3.5" />
-                              <span>Tạm dừng</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handlePlayActiveShot()}
-                              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                              <span>Xem riêng</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (slicerVideoRef.current && selectedShot) {
-                                slicerVideoRef.current.currentTime =
-                                  selectedShot.begin;
-                                setSlicerTime(selectedShot.begin);
-                              }
-                            }}
-                            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
-                            title="Về đầu cảnh"
-                          >
-                            Đầu cảnh
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (slicerVideoRef.current && selectedShot) {
-                                slicerVideoRef.current.currentTime =
-                                  selectedShot.end;
-                                setSlicerTime(selectedShot.end);
-                              }
-                            }}
-                            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
-                            title="Về cuối cảnh"
-                          >
-                            Cuối cảnh
-                          </button>
-                        </div>
-
-                        <PermissionGate module="split" action="edit">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleSplitAtTime(slicerTime)}
-                              className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1"
-                              title="Tách đôi shot tại con trỏ (phím S)"
-                            >
-                              <Scissors className="w-3 h-3" />
-                              <span>Tách (S)</span>
-                            </button>
-                            {selectedShotId && (
-                              <button
-                                onClick={() =>
-                                  handleMergeWithNext(selectedShotId)
-                                }
-                                className="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-semibold"
-                                title="Gộp với shot kế tiếp"
-                              >
-                                Gộp sau
-                              </button>
+                            {/* Active Shot Badge Overlay */}
+                            {selectedShot && (
+                              <div className="absolute top-2 left-2 z-10 px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-black/60 backdrop-blur-sm text-white border-white/20">
+                                Đang chọn: {selectedShot.label} (
+                                {selectedShot.category?.toUpperCase()})
+                              </div>
                             )}
                           </div>
-                        </PermissionGate>
+
+                          {/* Playback Controls Bar */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                            <div className="flex items-center gap-1.5">
+                              {isPlayingSlicer ? (
+                                <button
+                                  onClick={handleStopSlicer}
+                                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 hover:bg-amber-500/30"
+                                >
+                                  <Pause className="w-3.5 h-3.5" />
+                                  <span>Tạm dừng</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handlePlayActiveShot()}
+                                  className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                                >
+                                  <Play className="w-3.5 h-3.5" />
+                                  <span>Xem riêng</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  if (slicerVideoRef.current && selectedShot) {
+                                    slicerVideoRef.current.currentTime =
+                                      selectedShot.begin;
+                                    setSlicerTime(selectedShot.begin);
+                                  }
+                                }}
+                                className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                                title="Về đầu cảnh"
+                              >
+                                Đầu cảnh
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (slicerVideoRef.current && selectedShot) {
+                                    slicerVideoRef.current.currentTime =
+                                      selectedShot.end;
+                                    setSlicerTime(selectedShot.end);
+                                  }
+                                }}
+                                className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300"
+                                title="Về cuối cảnh"
+                              >
+                                Cuối cảnh
+                              </button>
+                            </div>
+
+                            <PermissionGate module="split" action="edit">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleSplitAtTime(slicerTime)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1"
+                                  title="Tách đôi shot tại con trỏ (phím S)"
+                                >
+                                  <Scissors className="w-3 h-3" />
+                                  <span>Tách (S)</span>
+                                </button>
+                                {selectedShotId && (
+                                  <button
+                                    onClick={() =>
+                                      handleMergeWithNext(selectedShotId)
+                                    }
+                                    className="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-semibold"
+                                    title="Gộp với shot kế tiếp"
+                                  >
+                                    Gộp sau
+                                  </button>
+                                )}
+                              </div>
+                            </PermissionGate>
+                          </div>
+                        </div>
+
+                        {/* Interactive Timeline Ribbon */}
+                        <div className="space-y-1.5 pt-3 border-t border-slate-800/80">
+                          <div className="flex items-center justify-between text-[11px] text-slate-400">
+                            <span>
+                              Thanh timeline phân đoạn (Click để chọn cảnh)
+                            </span>
+                            <span className="font-mono text-emerald-400">
+                              {state.shots.length} shots
+                            </span>
+                          </div>
+
+                          <div className="h-9 w-full rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex p-0.5 gap-0.5">
+                            {state.shots.map((shot) => {
+                              const totalDur = state.sourceVideo?.duration || 1;
+                              const widthPct = Math.max(
+                                2,
+                                ((shot.end - shot.begin) / totalDur) * 100,
+                              );
+                              const catObj = SHOT_CATEGORIES.find(
+                                (c) => c.id === shot.category,
+                              );
+                              const isSel = shot.id === selectedShotId;
+                              return (
+                                <button
+                                  key={shot.id}
+                                  onClick={() => {
+                                    setSelectedShotId(shot.id);
+                                    if (shot.category) {
+                                      setSplitEditingCategory(shot.category);
+                                      setAccordionShotId(shot.id);
+                                    }
+                                    if (slicerVideoRef.current) {
+                                      slicerVideoRef.current.currentTime =
+                                        shot.begin;
+                                    }
+                                    setSlicerTime(shot.begin);
+                                  }}
+                                  style={{
+                                    width: `${widthPct}%`,
+                                    backgroundColor: catObj
+                                      ? `${catObj.color}33`
+                                      : "#334155",
+                                    borderColor: isSel
+                                      ? "#ffffff"
+                                      : catObj?.color || "#475569",
+                                  }}
+                                  className={`h-full rounded-md border text-[10px] font-mono truncate px-1 flex items-center justify-center transition ${
+                                    isSel
+                                      ? "ring-2 ring-white z-10 font-bold"
+                                      : "opacity-80 hover:opacity-100"
+                                  }`}
+                                  title={`${shot.label} (${shot.begin.toFixed(
+                                    1,
+                                  )}s - ${shot.end.toFixed(1)}s)`}
+                                >
+                                  {shot.category
+                                    ? shot.category.slice(0, 3).toUpperCase()
+                                    : "?"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Interactive Timeline Ribbon */}
-                    <div className="space-y-1.5 pt-3 border-t border-slate-800/80">
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span>
-                          Thanh timeline phân đoạn (Click để chọn cảnh)
-                        </span>
-                        <span className="font-mono text-emerald-400">
-                          {state.shots.length} shots
-                        </span>
-                      </div>
+                    {/* 100% WIDTH EXPORT ACTION BAR CARD */}
+                    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">
+                            Xuất toàn bộ các cảnh đã tinh chỉnh về máy tính
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Cắt siêu tốc bằng FFmpeg, giữ nguyên chất lượng
+                            100%, bảo toàn mốc giây và mirror đã chỉnh
+                          </p>
+                        </div>
 
-                      <div className="h-9 w-full rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex p-0.5 gap-0.5">
-                        {state.shots.map((shot) => {
-                          const totalDur = state.sourceVideo?.duration || 1;
-                          const widthPct = Math.max(
-                            2,
-                            ((shot.end - shot.begin) / totalDur) * 100
-                          );
-                          const catObj = SHOT_CATEGORIES.find(
-                            (c) => c.id === shot.category
-                          );
-                          const isSel = shot.id === selectedShotId;
-                          return (
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          {canExportSplit && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleSliceAndDownloadZip}
+                                disabled={isSlicing}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition disabled:opacity-50"
+                              >
+                                <Download className="w-4 h-4 text-rose-400" />
+                                <span>Tải ZIP toàn bộ (5 folder)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDirectSaveToFolder}
+                                disabled={isSlicing}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                              >
+                                <FolderDown className="w-4 h-4" />
+                                <span>Lưu thẳng vào thư mục máy tính</span>
+                              </button>
+                            </>
+                          )}
+                          <PermissionGate module="split" action="edit">
                             <button
-                              key={shot.id}
-                              onClick={() => {
-                                setSelectedShotId(shot.id);
-                                if (shot.category) {
-                                  setSplitEditingCategory(shot.category);
-                                  setAccordionShotId(shot.id);
-                                }
-                                if (slicerVideoRef.current) {
-                                  slicerVideoRef.current.currentTime =
-                                    shot.begin;
-                                }
-                                setSlicerTime(shot.begin);
-                              }}
-                              style={{
-                                width: `${widthPct}%`,
-                                backgroundColor: catObj
-                                  ? `${catObj.color}33`
-                                  : "#334155",
-                                borderColor: isSel
-                                  ? "#ffffff"
-                                  : catObj?.color || "#475569",
-                              }}
-                              className={`h-full rounded-md border text-[10px] font-mono truncate px-1 flex items-center justify-center transition ${
-                                isSel
-                                  ? "ring-2 ring-white z-10 font-bold"
-                                  : "opacity-80 hover:opacity-100"
-                              }`}
-                              title={`${shot.label} (${shot.begin.toFixed(
-                                1
-                              )}s - ${shot.end.toFixed(1)}s)`}
+                              type="button"
+                              onClick={handleNextVideo}
+                              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20"
                             >
-                              {shot.category
-                                ? shot.category.slice(0, 3).toUpperCase()
-                                : "?"}
+                              <Plus className="w-4 h-4" />
+                              <span>Tách video tiếp theo</span>
                             </button>
-                          );
-                        })}
+                          </PermissionGate>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+            )}
 
-                {/* 100% WIDTH EXPORT ACTION BAR CARD */}
-                <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-white">
-                        Xuất toàn bộ các cảnh đã tinh chỉnh về máy tính
-                      </h3>
+            {/* ======================================================== */}
+            {/* TAB 2: TRỘN & GHÉP TỔ HỢP TỪ FOLDER CATEGORY (MIXER 20S) */}
+            {/* ======================================================== */}
+            {mainTab === "mix" && (
+              <div className="space-y-6">
+                {/* Top Action Bar: Mode chính (Excel Google Drive) & Mode phụ (Upload máy) */}
+                <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-bold flex items-center gap-2 text-white">
+                        <Cloud className="w-5 h-5 text-sky-400 shrink-0" />
+                        <span>
+                          Kho video theo 5 category (Google Drive & máy tính)
+                        </span>
+                      </h2>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Cắt siêu tốc bằng FFmpeg, giữ nguyên chất lượng 100%,
-                        bảo toàn mốc giây và mirror đã chỉnh
+                        Mode chính: Dán bảng 5 cột từ Excel (Google Drive) với
+                        cơ chế zero-disk stream. Mode phụ: Tải trực tiếp thư mục
+                        từ máy tính.
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {canExportSplit && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={handleSliceAndDownloadZip}
-                            disabled={isSlicing}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition disabled:opacity-50"
-                          >
-                            <Download className="w-4 h-4 text-rose-400" />
-                            <span>Tải ZIP toàn bộ (5 folder)</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDirectSaveToFolder}
-                            disabled={isSlicing}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-                          >
-                            <FolderDown className="w-4 h-4" />
-                            <span>Lưu thẳng vào thư mục máy tính</span>
-                          </button>
-                        </>
-                      )}
-                      <PermissionGate module="split" action="edit">
+                    <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 sm:ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => setShowDriveHistoryDrawer(true)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-950/80 hover:bg-sky-900 border border-sky-700/60 text-sky-200 text-xs font-semibold transition shadow-sm"
+                        title="Xem toàn bộ lịch sử link Google Drive đã nạp vào kho"
+                      >
+                        <Cloud className="w-4 h-4 text-sky-400" />
+                        <span>Lịch sử link Drive ({allDriveLinks.length})</span>
+                      </button>
+                      <PermissionGate module="mix" action="edit">
+                        <button
+                          onClick={() => masterFolderInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
+                          title="Upload thư mục chứa 5 folder OPEN, PRODUCT, TEXTURE, APPLY, END từ máy tính"
+                        >
+                          <FolderSync className="w-4 h-4 text-indigo-400" />
+                          <span>Chọn thư mục tổng từ máy (tự phân 5 cột)</span>
+                        </button>
                         <button
                           type="button"
-                          onClick={handleNextVideo}
-                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/20"
+                          onClick={() => setShowClearConfirmModal(true)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-slate-100 transition shadow-md shadow-rose-600/20"
+                          title="Xóa toàn bộ clip trong kho, voice và danh sách tổ hợp"
                         >
-                          <Plus className="w-4 h-4" />
-                          <span>Tách video tiếp theo</span>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Xóa</span>
                         </button>
                       </PermissionGate>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* ======================================================== */}
-        {/* TAB 2: TRỘN & GHÉP TỔ HỢP TỪ FOLDER CATEGORY (MIXER 20S) */}
-        {/* ======================================================== */}
-        {mainTab === "mix" && (
-          <div className="space-y-6">
-            {/* Top Action Bar: Mode chính (Excel Google Drive) & Mode phụ (Upload máy) */}
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-5">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-bold flex items-center gap-2 text-white">
-                    <Cloud className="w-5 h-5 text-sky-400 shrink-0" />
-                    <span>
-                      Kho video theo 5 category (Google Drive & máy tính)
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Mode chính: Dán bảng 5 cột từ Excel (Google Drive) với cơ
-                    chế zero-disk stream. Mode phụ: Tải trực tiếp thư mục từ máy
-                    tính.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 sm:ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => setShowDriveHistoryDrawer(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-950/80 hover:bg-sky-900 border border-sky-700/60 text-sky-200 text-xs font-semibold transition shadow-sm"
-                    title="Xem toàn bộ lịch sử link Google Drive đã nạp vào kho"
-                  >
-                    <Cloud className="w-4 h-4 text-sky-400" />
-                    <span>Lịch sử link Drive ({allDriveLinks.length})</span>
-                  </button>
-                  <PermissionGate module="mix" action="edit">
-                    <button
-                      onClick={() => masterFolderInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
-                      title="Upload thư mục chứa 5 folder OPEN, PRODUCT, TEXTURE, APPLY, END từ máy tính"
-                    >
-                      <FolderSync className="w-4 h-4 text-indigo-400" />
-                      <span>Chọn thư mục tổng từ máy (tự phân 5 cột)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowClearConfirmModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-slate-100 transition shadow-md shadow-rose-600/20"
-                      title="Xóa toàn bộ clip trong kho, voice và danh sách tổ hợp"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Xóa</span>
-                    </button>
-                  </PermissionGate>
-                </div>
-              </div>
-
-              {/* Thanh tra cứu nhanh link Drive */}
-              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                  <input
-                    type="text"
-                    value={quickCheckInput}
-                    onChange={(e) => setQuickCheckInput(e.target.value)}
-                    placeholder="Kiểm tra nhanh: Dán link Google Drive hoặc File ID vào đây để kiểm tra đã nạp chưa..."
-                    className="bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none w-full font-mono"
-                  />
-                  {quickCheckInput && (
-                    <button
-                      type="button"
-                      onClick={() => setQuickCheckInput("")}
-                      className="p-1 rounded text-slate-500 hover:text-slate-300 transition"
-                      title="Xóa tìm kiếm"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {quickCheckResult && (
-                  <div className="flex items-center gap-2 shrink-0 text-xs font-medium">
-                    {quickCheckResult.found ? (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>
-                          Đã có {quickCheckResult.matches.length} file (
-                          {quickCheckResult.matches
-                            .map((m) => m.category.toUpperCase())
-                            .join(", ")}
-                          )
-                        </span>
+                  {/* Thanh tra cứu nhanh link Drive */}
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={quickCheckInput}
+                        onChange={(e) => setQuickCheckInput(e.target.value)}
+                        placeholder="Kiểm tra nhanh: Dán link Google Drive hoặc File ID vào đây để kiểm tra đã nạp chưa..."
+                        className="bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none w-full font-mono"
+                      />
+                      {quickCheckInput && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setDriveHistorySearchText(quickCheckInput);
-                            setShowDriveHistoryDrawer(true);
-                          }}
-                          className="text-[11px] underline ml-1 text-emerald-200 hover:text-white cursor-pointer"
+                          onClick={() => setQuickCheckInput("")}
+                          className="p-1 rounded text-slate-500 hover:text-slate-300 transition"
+                          title="Xóa tìm kiếm"
                         >
-                          Xem chi tiết
+                          <X className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300">
-                        <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                        <span>Chưa có trong kho (hợp lệ để dán nạp)</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Mode chính: Dán nhanh bảng 5 cột từ Excel */}
-              <PermissionGate module="mix" action="edit">
-                <div className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-4 space-y-3 shadow-lg shadow-sky-950/20">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40">
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-white flex items-center gap-2">
-                          <span>
-                            Dán nhanh bảng 5 cột từ Excel (Google Drive)
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                            Mode chính • Zero-disk stream
-                          </span>
-                        </h3>
-                        <p className="text-[11px] text-slate-400">
-                          Bôi đen cả bảng 5 cột (Open, Product, Texture, Apply,
-                          End) trong file Excel rồi dán (Ctrl+V) vào khung bên
-                          dưới.
-                        </p>
-                      </div>
+                      )}
                     </div>
 
-                    {parsedExcel.totalExtracted > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExcelPasteText("")}
-                          className="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200 transition"
-                        >
-                          Xoá nội dung dán
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleIngestExcelDriveLinks}
-                          disabled={isIngestingDrive}
-                          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
-                        >
-                          {isIngestingDrive ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Cloud className="w-3.5 h-3.5" />
-                          )}
-                          <span>
-                            {isIngestingDrive
-                              ? "Đang nạp file..."
-                              : `+ Nạp ${parsedExcel.totalExtracted} file vào kho (5 category & voice)`}
-                          </span>
-                        </button>
+                    {quickCheckResult && (
+                      <div className="flex items-center gap-2 shrink-0 text-xs font-medium">
+                        {quickCheckResult.found ? (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>
+                              Đã có {quickCheckResult.matches.length} file (
+                              {quickCheckResult.matches
+                                .map((m) => m.category.toUpperCase())
+                                .join(", ")}
+                              )
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDriveHistorySearchText(quickCheckInput);
+                                setShowDriveHistoryDrawer(true);
+                              }}
+                              className="text-[11px] underline ml-1 text-emerald-200 hover:text-white cursor-pointer"
+                            >
+                              Xem chi tiết
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300">
+                            <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                            <span>Chưa có trong kho (hợp lệ để dán nạp)</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  <div className="relative">
-                    <textarea
-                      rows={3}
-                      value={excelPasteText}
-                      onChange={(e) => setExcelPasteText(e.target.value)}
-                      placeholder="Dán vùng dữ liệu copy từ Excel vào đây (hệ thống tự động phân tách Tab thành các cột: Open, Product, Texture, Apply, End, Voice)..."
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500 transition resize-y"
-                    />
-                  </div>
-                </div>
-              </PermissionGate>
+                  {/* Mode chính: Dán nhanh bảng 5 cột từ Excel */}
+                  <PermissionGate module="mix" action="edit">
+                    <div className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-4 space-y-3 shadow-lg shadow-sky-950/20">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40">
+                            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                              <span>
+                                Dán nhanh bảng 5 cột từ Excel (Google Drive)
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                                Mode chính • Zero-disk stream
+                              </span>
+                            </h3>
+                            <p className="text-[11px] text-slate-400">
+                              Bôi đen cả bảng 5 cột (Open, Product, Texture,
+                              Apply, End) trong file Excel rồi dán (Ctrl+V) vào
+                              khung bên dưới.
+                            </p>
+                          </div>
+                        </div>
 
-              {/* 6 Category & Voice Columns in 3x2 Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {CATEGORY_ORDER.map((catKey) => {
-                  const meta = SHOT_CATEGORIES.find((c) => c.id === catKey);
-                  const items = categoryPools[catKey] || [];
-                  return (
-                    <div
-                      key={catKey}
-                      className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-2.5 min-h-[220px]"
-                    >
+                        {parsedExcel.totalExtracted > 0 && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExcelPasteText("")}
+                              className="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200 transition"
+                            >
+                              Xoá nội dung dán
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleIngestExcelDriveLinks}
+                              disabled={isIngestingDrive}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                            >
+                              {isIngestingDrive ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Cloud className="w-3.5 h-3.5" />
+                              )}
+                              <span>
+                                {isIngestingDrive
+                                  ? "Đang nạp file..."
+                                  : `+ Nạp ${parsedExcel.totalExtracted} file vào kho (5 category & voice)`}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <textarea
+                          rows={3}
+                          value={excelPasteText}
+                          onChange={(e) => setExcelPasteText(e.target.value)}
+                          placeholder="Dán vùng dữ liệu copy từ Excel vào đây (hệ thống tự động phân tách Tab thành các cột: Open, Product, Texture, Apply, End, Voice)..."
+                          className="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500 transition resize-y"
+                        />
+                      </div>
+                    </div>
+                  </PermissionGate>
+
+                  {/* 6 Category & Voice Columns in 3x2 Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {CATEGORY_ORDER.map((catKey) => {
+                      const meta = SHOT_CATEGORIES.find((c) => c.id === catKey);
+                      const items = categoryPools[catKey] || [];
+                      return (
+                        <div
+                          key={catKey}
+                          className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-2.5 min-h-[220px]"
+                        >
+                          {/* Header: Badge & Count on left, Action buttons on right */}
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                                  meta?.badgeClass ||
+                                  "border-slate-700 text-slate-200"
+                                }`}
+                              >
+                                {meta?.label}
+                              </span>
+                              <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                                {items.length} clip
+                              </span>
+                            </div>
+                            <PermissionGate module="mix" action="edit">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSingleCategoryDriveModal({
+                                      category: catKey,
+                                      text: "",
+                                    })
+                                  }
+                                  className="py-1 px-2 rounded-lg bg-sky-950/60 hover:bg-sky-900/80 border border-sky-800/60 text-[10px] font-semibold text-sky-200 flex items-center gap-1 transition shadow-sm"
+                                  title="Dán link Google Drive cho mục này"
+                                >
+                                  <Link2 className="w-3 h-3 text-sky-400 shrink-0" />
+                                  <span>Link Drive</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    categoryInputRefs.current[catKey]?.click()
+                                  }
+                                  className="py-1 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition shadow-sm"
+                                  title="Tải file clip từ máy tính"
+                                >
+                                  <Plus className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>File</span>
+                                </button>
+                              </div>
+                            </PermissionGate>
+                          </div>
+
+                          {/* Items List */}
+                          <div className="flex-1 space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                            {items.length === 0 ? (
+                              <div className="h-full flex flex-col items-center justify-center text-center p-3 text-[11px] text-slate-500">
+                                Chưa có clip nào
+                              </div>
+                            ) : (
+                              items.map((it) => {
+                                const isDrive =
+                                  it.sourceType === "drive" || !!it.driveFileId;
+                                const driveFileId =
+                                  it.driveFileId ||
+                                  extractGoogleDriveFileId(it.localUrl);
+                                const driveUrl = driveFileId
+                                  ? `https://drive.google.com/file/d/${driveFileId}/view`
+                                  : isDrive
+                                    ? it.localUrl
+                                    : null;
+
+                                return (
+                                  <div
+                                    key={it.id}
+                                    className="p-2 rounded-lg bg-slate-900/90 border border-slate-800 text-[10px] space-y-1 group hover:border-slate-700 transition"
+                                  >
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <div className="min-w-0 flex items-center gap-1.5 truncate">
+                                        {isDrive ? (
+                                          <span title="Link Google Drive (Zero-disk stream)">
+                                            <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
+                                          </span>
+                                        ) : (
+                                          <span title="File video từ máy tính">
+                                            <Film className="w-3 h-3 text-slate-400 shrink-0" />
+                                          </span>
+                                        )}
+                                        {it.lockFlipH && (
+                                          <span title="Khóa lật gương">
+                                            <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                                          </span>
+                                        )}
+                                        <span
+                                          className="truncate text-slate-200 font-medium"
+                                          title={it.name}
+                                        >
+                                          {it.name}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="font-mono text-slate-400 font-semibold">
+                                          {it.duration.toFixed(1)}s
+                                        </span>
+                                        <PermissionGate
+                                          module="mix"
+                                          action="edit"
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleRemoveCategoryItem(
+                                                catKey,
+                                                it.id,
+                                              )
+                                            }
+                                            className="text-slate-500 hover:text-rose-400 opacity-60 group-hover:opacity-100 transition p-0.5 rounded hover:bg-slate-800"
+                                            title="Xóa clip này khỏi kho"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </PermissionGate>
+                                      </div>
+                                    </div>
+
+                                    {driveUrl && (
+                                      <div className="flex items-center justify-between gap-1.5 pl-4 text-[9px] font-mono text-slate-400 bg-slate-950/60 rounded px-1.5 py-0.5 border border-slate-800/60">
+                                        <a
+                                          href={driveUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sky-400 hover:text-sky-300 hover:underline truncate max-w-[170px] inline-flex items-center gap-1"
+                                          title={`Mở link Drive: ${driveUrl}`}
+                                        >
+                                          <span className="truncate">
+                                            {driveUrl}
+                                          </span>
+                                          <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(
+                                              driveUrl,
+                                            );
+                                            addToast({
+                                              type: "info",
+                                              text: "Đã sao chép link Google Drive.",
+                                            });
+                                          }}
+                                          className="text-slate-500 hover:text-slate-200 p-0.5 rounded transition shrink-0"
+                                          title="Sao chép link Drive"
+                                        >
+                                          <Copy className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Box 6: VOICE (LỒNG TIẾNG) */}
+                    <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-2.5 min-h-[220px]">
                       {/* Header: Badge & Count on left, Action buttons on right */}
                       <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                              meta?.badgeClass ||
-                              "border-slate-700 text-slate-200"
-                            }`}
-                          >
-                            {meta?.label}
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
+                            Voice
                           </span>
                           <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                            {items.length} clip
+                            {multiVoices.length} voice
                           </span>
                         </div>
                         <PermissionGate module="mix" action="edit">
@@ -4884,23 +5190,21 @@ export default function StudioWorkspace({
                               type="button"
                               onClick={() =>
                                 setSingleCategoryDriveModal({
-                                  category: catKey,
+                                  category: "voice",
                                   text: "",
                                 })
                               }
                               className="py-1 px-2 rounded-lg bg-sky-950/60 hover:bg-sky-900/80 border border-sky-800/60 text-[10px] font-semibold text-sky-200 flex items-center gap-1 transition shadow-sm"
-                              title="Dán link Google Drive cho mục này"
+                              title="Dán link Google Drive cho lồng tiếng"
                             >
                               <Link2 className="w-3 h-3 text-sky-400 shrink-0" />
                               <span>Link Drive</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() =>
-                                categoryInputRefs.current[catKey]?.click()
-                              }
+                              onClick={() => voiceInputRef.current?.click()}
                               className="py-1 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition shadow-sm"
-                              title="Tải file clip từ máy tính"
+                              title="Tải file voice từ máy tính"
                             >
                               <Plus className="w-3 h-3 text-slate-400 shrink-0" />
                               <span>File</span>
@@ -4909,66 +5213,131 @@ export default function StudioWorkspace({
                         </PermissionGate>
                       </div>
 
-                      {/* Items List */}
+                      {/* Inline Voice Mode Toggle */}
+                      <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800/80 text-[11px]">
+                        <span className="text-slate-400 font-medium">
+                          Chế độ lồng tiếng:
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="boxVoiceMode"
+                              disabled={!canEditMix}
+                              checked={mixVoiceMode === "none"}
+                              onChange={() => setMixVoiceMode("none")}
+                              className="accent-indigo-500 disabled:opacity-50"
+                            />
+                            <span
+                              className={
+                                mixVoiceMode === "none"
+                                  ? "text-slate-200"
+                                  : "text-slate-500"
+                              }
+                            >
+                              Không lồng
+                            </span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="boxVoiceMode"
+                              disabled={!canEditMix}
+                              checked={mixVoiceMode === "rotate"}
+                              onChange={() => setMixVoiceMode("rotate")}
+                              className="accent-indigo-500 disabled:opacity-50"
+                            />
+                            <span
+                              className={
+                                mixVoiceMode === "rotate"
+                                  ? "text-indigo-300 font-medium"
+                                  : "text-slate-500"
+                              }
+                            >
+                              Xoay vòng
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Voice Items List */}
                       <div className="flex-1 space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                        {items.length === 0 ? (
+                        {multiVoices.length === 0 ? (
                           <div className="h-full flex flex-col items-center justify-center text-center p-3 text-[11px] text-slate-500">
-                            Chưa có clip nào
+                            Chưa có voice nào
                           </div>
                         ) : (
-                          items.map((it) => {
+                          multiVoices.map((v) => {
                             const isDrive =
-                              it.sourceType === "drive" || !!it.driveFileId;
+                              v.sourceType === "drive" || !!v.driveFileId;
                             const driveFileId =
-                              it.driveFileId ||
-                              extractGoogleDriveFileId(it.localUrl);
-                            const driveUrl = driveFileId
-                              ? `https://drive.google.com/file/d/${driveFileId}/view`
-                              : isDrive
-                              ? it.localUrl
-                              : null;
+                              v.driveFileId ||
+                              extractGoogleDriveFileId(v.driveRawUrl || "");
+                            const driveUrl =
+                              v.driveRawUrl ||
+                              (driveFileId
+                                ? `https://drive.google.com/file/d/${driveFileId}/view`
+                                : isDrive
+                                  ? v.localUrl
+                                  : null);
 
                             return (
                               <div
-                                key={it.id}
+                                key={v.id}
                                 className="p-2 rounded-lg bg-slate-900/90 border border-slate-800 text-[10px] space-y-1 group hover:border-slate-700 transition"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <div className="min-w-0 flex items-center gap-1.5 truncate">
+                                  <div className="flex items-center gap-1.5 truncate min-w-0">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleToggleAuditionVoice(v)
+                                      }
+                                      className={`p-1 rounded transition shrink-0 ${
+                                        auditionVoiceId === v.id
+                                          ? "bg-indigo-600 text-white"
+                                          : "text-slate-400 hover:text-indigo-300 hover:bg-slate-800"
+                                      }`}
+                                      title={
+                                        auditionVoiceId === v.id
+                                          ? "Dừng nghe thử"
+                                          : "Nghe thử file này"
+                                      }
+                                    >
+                                      {auditionVoiceId === v.id ? (
+                                        <Square className="w-2.5 h-2.5 fill-current" />
+                                      ) : (
+                                        <Play className="w-2.5 h-2.5 fill-current" />
+                                      )}
+                                    </button>
                                     {isDrive ? (
                                       <span title="Link Google Drive (Zero-disk stream)">
                                         <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
                                       </span>
                                     ) : (
-                                      <span title="File video từ máy tính">
-                                        <Film className="w-3 h-3 text-slate-400 shrink-0" />
-                                      </span>
-                                    )}
-                                    {it.lockFlipH && (
-                                      <span title="Khóa lật gương">
-                                        <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                                      <span title="File âm thanh từ máy tính">
+                                        <Music className="w-3 h-3 text-slate-400 shrink-0" />
                                       </span>
                                     )}
                                     <span
                                       className="truncate text-slate-200 font-medium"
-                                      title={it.name}
+                                      title={v.name}
                                     >
-                                      {it.name}
+                                      {v.name}
                                     </span>
                                   </div>
-
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     <span className="font-mono text-slate-400 font-semibold">
-                                      {it.duration.toFixed(1)}s
+                                      {v.duration.toFixed(1)}s
                                     </span>
                                     <PermissionGate module="mix" action="edit">
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          handleRemoveCategoryItem(catKey, it.id)
+                                          handleRemoveVoiceItem(v.id)
                                         }
                                         className="text-slate-500 hover:text-rose-400 opacity-60 group-hover:opacity-100 transition p-0.5 rounded hover:bg-slate-800"
-                                        title="Xóa clip này khỏi kho"
+                                        title="Xóa voice này khỏi kho"
                                       >
                                         <Trash2 className="w-3 h-3" />
                                       </button>
@@ -4977,7 +5346,7 @@ export default function StudioWorkspace({
                                 </div>
 
                                 {driveUrl && (
-                                  <div className="flex items-center justify-between gap-1.5 pl-4 text-[9px] font-mono text-slate-400 bg-slate-950/60 rounded px-1.5 py-0.5 border border-slate-800/60">
+                                  <div className="flex items-center justify-between gap-1.5 pl-5 text-[9px] font-mono text-slate-400 bg-slate-950/60 rounded px-1.5 py-0.5 border border-slate-800/60">
                                     <a
                                       href={driveUrl}
                                       target="_blank"
@@ -5012,1550 +5381,1496 @@ export default function StudioWorkspace({
                         )}
                       </div>
                     </div>
-                  );
-                })}
-
-                {/* Box 6: VOICE (LỒNG TIẾNG) */}
-                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-2.5 min-h-[220px]">
-                  {/* Header: Badge & Count on left, Action buttons on right */}
-                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/40 text-indigo-300 bg-indigo-500/10">
-                        Voice
-                      </span>
-                      <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                        {multiVoices.length} voice
-                      </span>
-                    </div>
-                    <PermissionGate module="mix" action="edit">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSingleCategoryDriveModal({
-                              category: "voice",
-                              text: "",
-                            })
-                          }
-                          className="py-1 px-2 rounded-lg bg-sky-950/60 hover:bg-sky-900/80 border border-sky-800/60 text-[10px] font-semibold text-sky-200 flex items-center gap-1 transition shadow-sm"
-                          title="Dán link Google Drive cho lồng tiếng"
-                        >
-                          <Link2 className="w-3 h-3 text-sky-400 shrink-0" />
-                          <span>Link Drive</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => voiceInputRef.current?.click()}
-                          className="py-1 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition shadow-sm"
-                          title="Tải file voice từ máy tính"
-                        >
-                          <Plus className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>File</span>
-                        </button>
-                      </div>
-                    </PermissionGate>
                   </div>
+                </div>
 
-                  {/* Inline Voice Mode Toggle */}
-                  <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800/80 text-[11px]">
-                    <span className="text-slate-400 font-medium">
-                      Chế độ lồng tiếng:
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="boxVoiceMode"
-                          disabled={!canEditMix}
-                          checked={mixVoiceMode === "none"}
-                          onChange={() => setMixVoiceMode("none")}
-                          className="accent-indigo-500 disabled:opacity-50"
-                        />
-                        <span
-                          className={
-                            mixVoiceMode === "none"
-                              ? "text-slate-200"
-                              : "text-slate-500"
-                          }
-                        >
-                          Không lồng
-                        </span>
+                {/* Mixer Settings: Single Clean Row Aligned Right */}
+                <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-end gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap min-w-0">
+                    {/* Clip Name Pattern Input */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Edit3 className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <label className="text-xs font-bold text-white whitespace-nowrap">
+                        Tên clip:
                       </label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="boxVoiceMode"
-                          disabled={!canEditMix}
-                          checked={mixVoiceMode === "rotate"}
-                          onChange={() => setMixVoiceMode("rotate")}
-                          className="accent-indigo-500 disabled:opacity-50"
-                        />
-                        <span
-                          className={
-                            mixVoiceMode === "rotate"
-                              ? "text-indigo-300 font-medium"
-                              : "text-slate-500"
-                          }
-                        >
-                          Xoay vòng
-                        </span>
+                      <input
+                        type="text"
+                        disabled={!canEditMix}
+                        value={clipNamePrefix}
+                        onChange={(e) => setClipNamePrefix(e.target.value)}
+                        onBlur={() => persistProjectSettings()}
+                        placeholder={currentProjectName || "Ví dụ: Brand A"}
+                        className="w-36 sm:w-52 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500 transition placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={
+                          canEditMix
+                            ? "Tiền tố tên cho các video khi trộn (sẽ tự động thêm #1, #2...)"
+                            : "Chế độ chỉ xem"
+                        }
+                      />
+                    </div>
+
+                    {/* Video Count Input */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Clock className="w-4 h-4 text-rose-400 shrink-0" />
+                      <label className="text-xs font-bold text-white whitespace-nowrap">
+                        Số video muốn tạo:
                       </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        disabled={!canEditMix}
+                        value={targetMixCount}
+                        onChange={(e) =>
+                          setTargetMixCount(
+                            Math.max(
+                              1,
+                              Math.min(50, parseInt(e.target.value) || 1),
+                            ),
+                          )
+                        }
+                        onBlur={() => persistProjectSettings()}
+                        className="w-16 sm:w-20 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono font-bold text-center text-white focus:outline-none focus:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <span className="text-[11px] text-slate-400 hidden xl:inline whitespace-nowrap">
+                        video (Tối đa 50)
+                      </span>
                     </div>
                   </div>
 
-                  {/* Voice Items List */}
-                  <div className="flex-1 space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                    {multiVoices.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-3 text-[11px] text-slate-500">
-                        Chưa có voice nào
-                      </div>
-                    ) : (
-                      multiVoices.map((v) => {
-                        const isDrive =
-                          v.sourceType === "drive" || !!v.driveFileId;
-                        const driveFileId =
-                          v.driveFileId ||
-                          extractGoogleDriveFileId(v.driveRawUrl || "");
-                        const driveUrl =
-                          v.driveRawUrl ||
-                          (driveFileId
-                            ? `https://drive.google.com/file/d/${driveFileId}/view`
-                            : isDrive
-                            ? v.localUrl
-                            : null);
+                  <div className="shrink-0">
+                    <button
+                      type="button"
+                      disabled={!canEditMix && !canExportMix}
+                      onClick={handlePlanDiverseMix}
+                      className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={
+                        canEditMix || canExportMix
+                          ? "Tạo tổ hợp trộn video tự động"
+                          : "Bạn không có quyền trộn video"
+                      }
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Trộn</span>
+                    </button>
+                  </div>
+                </div>
 
-                        return (
-                          <div
-                            key={v.id}
-                            className="p-2 rounded-lg bg-slate-900/90 border border-slate-800 text-[10px] space-y-1 group hover:border-slate-700 transition"
-                          >
-                            <div className="flex items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5 truncate min-w-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleAuditionVoice(v)}
-                                  className={`p-1 rounded transition shrink-0 ${
-                                    auditionVoiceId === v.id
-                                      ? "bg-indigo-600 text-white"
-                                      : "text-slate-400 hover:text-indigo-300 hover:bg-slate-800"
-                                  }`}
-                                  title={
-                                    auditionVoiceId === v.id
-                                      ? "Dừng nghe thử"
-                                      : "Nghe thử file này"
-                                  }
-                                >
-                                  {auditionVoiceId === v.id ? (
-                                    <Square className="w-2.5 h-2.5 fill-current" />
-                                  ) : (
-                                    <Play className="w-2.5 h-2.5 fill-current" />
+                {/* Generated Composed Videos & 9:16 Canvas Preview */}
+                {state?.composedVideos && state.composedVideos.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left: Combinations List */}
+                    <div className="lg:col-span-7 bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">
+                            Danh sách {state.composedVideos.length} tổ hợp video
+                          </h3>
+                          <p className="text-xs text-slate-400">
+                            Click vào cảnh (OPEN,...) để chỉnh tốc độ, cắt giây,
+                            lật gương
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {canEditMix && (
+                            <button
+                              type="button"
+                              onClick={() => setShowMarkAllRenderedModal(true)}
+                              disabled={
+                                Boolean(busyMessage) || isMarkingAllRendered
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-semibold transition shadow-md shadow-slate-900/40 disabled:opacity-50"
+                              title="Đánh dấu tất cả video trong danh sách tổ hợp đã render vào lịch sử"
+                            >
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Đánh dấu đã render</span>
+                            </button>
+                          )}
+                          {canExportMix && (
+                            <button
+                              onClick={handleRenderAllComposedZip}
+                              disabled={Boolean(busyMessage)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                              title="Render toàn bộ video bằng FFmpeg và nén ZIP tải về máy"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Tải tất cả</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+                        {state.composedVideos.map((comp, idx) => {
+                          const isSelected = selectedComposed?.id === comp.id;
+                          const activeSlotIdx =
+                            isSelected && editingSlotCategory
+                              ? comp.slots.findIndex(
+                                  (s) => s.category === editingSlotCategory,
+                                )
+                              : -1;
+                          const activeSlot =
+                            activeSlotIdx >= 0
+                              ? comp.slots[activeSlotIdx]
+                              : null;
+                          const isCardPlaying =
+                            isSelected &&
+                            isPreviewPlaying &&
+                            previewMode === "full";
+                          const isRendered = renderedHistoryList.some(
+                            (r) => r.tupleKey === comp.tupleKey,
+                          );
+
+                          return (
+                            <div
+                              key={comp.id}
+                              onClick={() => setSelectedComposedId(comp.id)}
+                              className={`p-3.5 rounded-xl border transition ${
+                                isSelected
+                                  ? "bg-slate-800/95 border-rose-500/80 shadow-lg shadow-rose-500/10"
+                                  : "bg-slate-950/70 border-slate-800 hover:border-slate-700"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2.5">
+                                <span className="text-xs font-bold text-white flex items-center gap-2 flex-wrap">
+                                  <span>
+                                    #{idx + 1} — {comp.name}
+                                  </span>
+                                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                                    ⏱️ Tổng: {comp.finalDuration.toFixed(1)}s
+                                  </span>
+                                  {isRendered && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                      <Check className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
+                                      <span>Đã render</span>
+                                    </span>
                                   )}
-                                </button>
-                                {isDrive ? (
-                                  <span title="Link Google Drive (Zero-disk stream)">
-                                    <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
-                                  </span>
-                                ) : (
-                                  <span title="File âm thanh từ máy tính">
-                                    <Music className="w-3 h-3 text-slate-400 shrink-0" />
-                                  </span>
-                                )}
-                                <span
-                                  className="truncate text-slate-200 font-medium"
-                                  title={v.name}
-                                >
-                                  {v.name}
                                 </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="font-mono text-slate-400 font-semibold">
-                                  {v.duration.toFixed(1)}s
-                                </span>
-                                <PermissionGate module="mix" action="edit">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveVoiceItem(v.id)}
-                                    className="text-slate-500 hover:text-rose-400 opacity-60 group-hover:opacity-100 transition p-0.5 rounded hover:bg-slate-800"
-                                    title="Xóa voice này khỏi kho"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </PermissionGate>
-                              </div>
-                            </div>
-
-                            {driveUrl && (
-                              <div className="flex items-center justify-between gap-1.5 pl-5 text-[9px] font-mono text-slate-400 bg-slate-950/60 rounded px-1.5 py-0.5 border border-slate-800/60">
-                                <a
-                                  href={driveUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sky-400 hover:text-sky-300 hover:underline truncate max-w-[170px] inline-flex items-center gap-1"
-                                  title={`Mở link Drive: ${driveUrl}`}
-                                >
-                                  <span className="truncate">{driveUrl}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(driveUrl);
-                                    addToast({
-                                      type: "info",
-                                      text: "Đã sao chép link Google Drive.",
-                                    });
-                                  }}
-                                  className="text-slate-500 hover:text-slate-200 p-0.5 rounded transition shrink-0"
-                                  title="Sao chép link Drive"
-                                >
-                                  <Copy className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mixer Settings: Single Clean Row Aligned Right */}
-            <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-end gap-3 sm:gap-4">
-              <div className="flex items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap min-w-0">
-                {/* Clip Name Pattern Input */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <Edit3 className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <label className="text-xs font-bold text-white whitespace-nowrap">
-                    Tên clip:
-                  </label>
-                  <input
-                    type="text"
-                    disabled={!canEditMix}
-                    value={clipNamePrefix}
-                    onChange={(e) => setClipNamePrefix(e.target.value)}
-                    onBlur={() => persistProjectSettings()}
-                    placeholder={currentProjectName || "Ví dụ: Brand A"}
-                    className="w-36 sm:w-52 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500 transition placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={canEditMix ? "Tiền tố tên cho các video khi trộn (sẽ tự động thêm #1, #2...)" : "Chế độ chỉ xem"}
-                  />
-                </div>
-
-                {/* Video Count Input */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <Clock className="w-4 h-4 text-rose-400 shrink-0" />
-                  <label className="text-xs font-bold text-white whitespace-nowrap">
-                    Số video muốn tạo:
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    disabled={!canEditMix}
-                    value={targetMixCount}
-                    onChange={(e) =>
-                      setTargetMixCount(
-                        Math.max(1, Math.min(50, parseInt(e.target.value) || 1))
-                      )
-                    }
-                    onBlur={() => persistProjectSettings()}
-                    className="w-16 sm:w-20 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono font-bold text-center text-white focus:outline-none focus:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <span className="text-[11px] text-slate-400 hidden xl:inline whitespace-nowrap">
-                    video (Tối đa 50)
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0">
-                <button
-                  type="button"
-                  disabled={!canEditMix && !canExportMix}
-                  onClick={handlePlanDiverseMix}
-                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={canEditMix || canExportMix ? "Tạo tổ hợp trộn video tự động" : "Bạn không có quyền trộn video"}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Trộn</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Generated Composed Videos & 9:16 Canvas Preview */}
-            {state?.composedVideos && state.composedVideos.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left: Combinations List */}
-                <div className="lg:col-span-7 bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-white">
-                        Danh sách {state.composedVideos.length} tổ hợp video
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        Click vào cảnh (OPEN,...) để chỉnh tốc độ, cắt giây, lật
-                        gương
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {canEditMix && (
-                        <button
-                          type="button"
-                          onClick={() => setShowMarkAllRenderedModal(true)}
-                          disabled={Boolean(busyMessage) || isMarkingAllRendered}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-semibold transition shadow-md shadow-slate-900/40 disabled:opacity-50"
-                          title="Đánh dấu tất cả video trong danh sách tổ hợp đã render vào lịch sử"
-                        >
-                          <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Đánh dấu đã render</span>
-                        </button>
-                      )}
-                      {canExportMix && (
-                        <button
-                          onClick={handleRenderAllComposedZip}
-                          disabled={Boolean(busyMessage)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
-                          title="Render toàn bộ video bằng FFmpeg và nén ZIP tải về máy"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Tải tất cả</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-                    {state.composedVideos.map((comp, idx) => {
-                      const isSelected = selectedComposed?.id === comp.id;
-                      const activeSlotIdx =
-                        isSelected && editingSlotCategory
-                          ? comp.slots.findIndex(
-                              (s) => s.category === editingSlotCategory
-                            )
-                          : -1;
-                      const activeSlot =
-                        activeSlotIdx >= 0 ? comp.slots[activeSlotIdx] : null;
-                      const isCardPlaying =
-                        isSelected &&
-                        isPreviewPlaying &&
-                        previewMode === "full";
-                      const isRendered = renderedHistoryList.some(
-                        (r) => r.tupleKey === comp.tupleKey
-                      );
-
-                      return (
-                        <div
-                          key={comp.id}
-                          onClick={() => setSelectedComposedId(comp.id)}
-                          className={`p-3.5 rounded-xl border transition ${
-                            isSelected
-                              ? "bg-slate-800/95 border-rose-500/80 shadow-lg shadow-rose-500/10"
-                              : "bg-slate-950/70 border-slate-800 hover:border-slate-700"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-xs font-bold text-white flex items-center gap-2 flex-wrap">
-                              <span>
-                                #{idx + 1} — {comp.name}
-                              </span>
-                              <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                                ⏱️ Tổng: {comp.finalDuration.toFixed(1)}s
-                              </span>
-                              {isRendered && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                  <Check className="w-3 h-3 text-emerald-400 stroke-[2.5]" />
-                                  <span>Đã render</span>
-                                </span>
-                              )}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isCardPlaying) {
-                                    setPauseTrigger((prev) => prev + 1);
-                                  } else {
-                                    setSelectedComposedId(comp.id);
-                                    setEditingSlotCategory(null);
-                                    setActiveSlotFocusIndex(null);
-                                    setPreviewMode("full");
-                                    setPlayTrigger((prev) => prev + 1);
-                                  }
-                                }}
-                                className={`p-2 rounded-lg text-white shadow-md transition ${
-                                  isCardPlaying
-                                    ? "bg-amber-600 hover:bg-amber-500 shadow-amber-600/20"
-                                    : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20"
-                                }`}
-                                title={
-                                  isCardPlaying
-                                    ? "Tạm dừng phát thử"
-                                    : "Xem trước toàn bộ video (5 cảnh)"
-                                }
-                                aria-label={
-                                  isCardPlaying ? "Tạm dừng" : "Phát video"
-                                }
-                              >
-                                {isCardPlaying ? (
-                                  <Pause className="w-3.5 h-3.5 fill-current" />
-                                ) : (
-                                  <Play className="w-3.5 h-3.5 fill-current" />
-                                )}
-                              </button>
-                                {canExportMix && (
+                                <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleRenderSingleComposed(comp);
+                                      if (isCardPlaying) {
+                                        setPauseTrigger((prev) => prev + 1);
+                                      } else {
+                                        setSelectedComposedId(comp.id);
+                                        setEditingSlotCategory(null);
+                                        setActiveSlotFocusIndex(null);
+                                        setPreviewMode("full");
+                                        setPlayTrigger((prev) => prev + 1);
+                                      }
                                     }}
-                                    className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition"
-                                    title="Xuất file MP4 hoàn chỉnh bằng FFmpeg"
-                                    aria-label="Xuất file MP4"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                            </div>
-                          </div>
-
-                          {/* 5 Slots Badges */}
-                          <div className="grid grid-cols-5 gap-1.5">
-                            {comp.slots.map((slot, sIdx) => {
-                              const slotDur = (
-                                slot.exitEnd - slot.enterBegin
-                              ).toFixed(1);
-                              const isSlotActive =
-                                isSelected &&
-                                editingSlotCategory === slot.category;
-                              return (
-                                <button
-                                  key={`${comp.id}_${slot.category}`}
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedComposedId(comp.id);
-                                    const willBeActive = !isSlotActive;
-                                    setEditingSlotCategory(
-                                      willBeActive ? slot.category : null
-                                    );
-                                    setActiveSlotFocusIndex(
-                                      willBeActive ? sIdx : null
-                                    );
-                                    setPreviewMode(
-                                      willBeActive ? "slot" : "full"
-                                    );
-                                  }}
-                                  className={`p-1.5 rounded-lg text-left border text-[10px] transition cursor-pointer ${
-                                    isSlotActive
-                                      ? "bg-rose-950/70 border-rose-500 ring-2 ring-rose-500/50 shadow-md shadow-rose-500/20"
-                                      : "bg-slate-900 border-slate-800 hover:border-slate-700"
-                                  }`}
-                                >
-                                  <div className="font-bold text-slate-300 uppercase flex items-center justify-between">
-                                    <span
-                                      className={
-                                        isSlotActive
-                                          ? "text-rose-300 font-extrabold"
-                                          : ""
-                                      }
-                                    >
-                                      {slot.category}
-                                    </span>
-                                    <span className="font-mono text-rose-300 font-bold">
-                                      {slotDur}s
-                                    </span>
-                                  </div>
-                                  <div
-                                    className="text-slate-400 truncate mt-0.5 text-[9px]"
-                                    title={slot.shotLabel}
-                                  >
-                                    {slot.shotLabel}
-                                  </div>
-                                  <div className="font-mono text-[9px] text-slate-500 mt-0.5 flex items-center justify-between">
-                                    <span>
-                                      {slot.videoBegin.toFixed(1)}s–
-                                      {slot.videoEnd.toFixed(1)}s
-                                    </span>
-                                    <span
-                                      className={
-                                        slot.speed > 1
-                                          ? "text-cyan-400 font-semibold"
-                                          : slot.speed < 1
-                                          ? "text-amber-400 font-semibold"
-                                          : "text-slate-400"
-                                      }
-                                    >
-                                      {slot.speed}x
-                                    </span>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {/* Voice Track Selector for this Composed Video */}
-                          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                              <Mic className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                              <span className="text-[10px] text-slate-300">
-                                Lồng tiếng:
-                              </span>
-                            </div>
-                            <select
-                              value={comp.voiceTrackId || ""}
-                              disabled={!canEditMix}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleChangeComposedVoice(
-                                  comp.id,
-                                  e.target.value || null
-                                );
-                              }}
-                              className="bg-slate-900 border border-slate-700 text-indigo-300 text-[10px] rounded-lg px-2 py-0.5 focus:outline-none focus:border-indigo-500 max-w-[210px] truncate disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <option value="">(Không lồng voice)</option>
-                              {multiVoices.map((v) => (
-                                <option key={v.id} value={v.id}>
-                                  🎵 {v.name} ({v.duration.toFixed(1)}s)
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Inline Scene Inspector */}
-                          {isSelected && activeSlot && activeSlotIdx >= 0 && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-rose-500/40 space-y-3 animate-in fade-in duration-200"
-                            >
-                              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-rose-300 uppercase px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/30">
-                                    Cảnh {activeSlot.category}
-                                  </span>
-                                  <span
-                                    className="text-xs text-slate-200 truncate max-w-[180px]"
-                                    title={activeSlot.shotLabel}
-                                  >
-                                    {activeSlot.shotLabel}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-                                    (Gốc:{" "}
-                                    {(
-                                      activeSlot.originalVideoEnd ||
-                                      activeSlot.videoEnd
-                                    ).toFixed(1)}
-                                    s)
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {/* Compact Mirror Toggle Button */}
-                                  <button
-                                    type="button"
-                                    disabled={!canEditMix}
-                                    onClick={() =>
-                                      handleUpdateComposedSlot(
-                                        comp.id,
-                                        activeSlotIdx,
-                                        {
-                                          flipH: !activeSlot.flipH,
-                                        }
-                                      )
-                                    }
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold border transition ${
-                                      activeSlot.flipH
-                                        ? "bg-rose-600/30 text-rose-300 border-rose-500/60 shadow-sm"
-                                        : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
-                                    } ${!canEditMix ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    className={`p-2 rounded-lg text-white shadow-md transition ${
+                                      isCardPlaying
+                                        ? "bg-amber-600 hover:bg-amber-500 shadow-amber-600/20"
+                                        : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20"
+                                    }`}
                                     title={
-                                      !canEditMix
-                                        ? "Chế độ chỉ xem, không thể đổi mirror"
-                                        : "Lật gương ngang hình ảnh (Mirror)"
+                                      isCardPlaying
+                                        ? "Tạm dừng phát thử"
+                                        : "Xem trước toàn bộ video (5 cảnh)"
+                                    }
+                                    aria-label={
+                                      isCardPlaying ? "Tạm dừng" : "Phát video"
                                     }
                                   >
-                                    <FlipHorizontal className="w-3.5 h-3.5" />
-                                    <span>
-                                      {activeSlot.flipH
-                                        ? "Đang lật gương"
-                                        : "Lật gương"}
-                                    </span>
+                                    {isCardPlaying ? (
+                                      <Pause className="w-3.5 h-3.5 fill-current" />
+                                    ) : (
+                                      <Play className="w-3.5 h-3.5 fill-current" />
+                                    )}
                                   </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setPreviewMode("slot");
-                                      setActiveSlotFocusIndex(activeSlotIdx);
-                                      setPlayTrigger((prev) => prev + 1);
-                                    }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition"
-                                    title="Phát thử đoạn video này trên player"
-                                  >
-                                    <Play className="w-3 h-3 text-rose-400 fill-current" />
-                                    <span>Xem đoạn này</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingSlotCategory(null);
-                                      setPreviewMode("full");
-                                    }}
-                                    className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800"
-                                    title="Thu gọn bảng chỉnh sửa"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
+                                  {canExportMix && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRenderSingleComposed(comp);
+                                      }}
+                                      className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition"
+                                      title="Xuất file MP4 hoàn chỉnh bằng FFmpeg"
+                                      aria-label="Xuất file MP4"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                                {/* Speed Controls */}
-                                <div className="space-y-1.5 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
-                                  <div>
-                                    <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between mb-1.5">
-                                      <span>Tốc độ phát:</span>
-                                      <span className="text-rose-400 font-mono font-bold">
-                                        {activeSlot.speed}x
-                                      </span>
-                                    </label>
-                                    <div className="flex items-center gap-1 flex-wrap mb-2">
-                                      {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(
-                                        (spd) => (
-                                          <button
-                                            key={spd}
-                                            type="button"
+                              {/* 5 Slots Badges */}
+                              <div className="grid grid-cols-5 gap-1.5">
+                                {comp.slots.map((slot, sIdx) => {
+                                  const slotDur = (
+                                    slot.exitEnd - slot.enterBegin
+                                  ).toFixed(1);
+                                  const isSlotActive =
+                                    isSelected &&
+                                    editingSlotCategory === slot.category;
+                                  return (
+                                    <button
+                                      key={`${comp.id}_${slot.category}`}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedComposedId(comp.id);
+                                        const willBeActive = !isSlotActive;
+                                        setEditingSlotCategory(
+                                          willBeActive ? slot.category : null,
+                                        );
+                                        setActiveSlotFocusIndex(
+                                          willBeActive ? sIdx : null,
+                                        );
+                                        setPreviewMode(
+                                          willBeActive ? "slot" : "full",
+                                        );
+                                      }}
+                                      className={`p-1.5 rounded-lg text-left border text-[10px] transition cursor-pointer ${
+                                        isSlotActive
+                                          ? "bg-rose-950/70 border-rose-500 ring-2 ring-rose-500/50 shadow-md shadow-rose-500/20"
+                                          : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                                      }`}
+                                    >
+                                      <div className="font-bold text-slate-300 uppercase flex items-center justify-between">
+                                        <span
+                                          className={
+                                            isSlotActive
+                                              ? "text-rose-300 font-extrabold"
+                                              : ""
+                                          }
+                                        >
+                                          {slot.category}
+                                        </span>
+                                        <span className="font-mono text-rose-300 font-bold">
+                                          {slotDur}s
+                                        </span>
+                                      </div>
+                                      <div
+                                        className="text-slate-400 truncate mt-0.5 text-[9px]"
+                                        title={slot.shotLabel}
+                                      >
+                                        {slot.shotLabel}
+                                      </div>
+                                      <div className="font-mono text-[9px] text-slate-500 mt-0.5 flex items-center justify-between">
+                                        <span>
+                                          {slot.videoBegin.toFixed(1)}s–
+                                          {slot.videoEnd.toFixed(1)}s
+                                        </span>
+                                        <span
+                                          className={
+                                            slot.speed > 1
+                                              ? "text-cyan-400 font-semibold"
+                                              : slot.speed < 1
+                                                ? "text-amber-400 font-semibold"
+                                                : "text-slate-400"
+                                          }
+                                        >
+                                          {slot.speed}x
+                                        </span>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Voice Track Selector for this Composed Video */}
+                              <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                                <div className="flex items-center gap-1.5 text-slate-400">
+                                  <Mic className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                  <span className="text-[10px] text-slate-300">
+                                    Lồng tiếng:
+                                  </span>
+                                </div>
+                                <select
+                                  value={comp.voiceTrackId || ""}
+                                  disabled={!canEditMix}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleChangeComposedVoice(
+                                      comp.id,
+                                      e.target.value || null,
+                                    );
+                                  }}
+                                  className="bg-slate-900 border border-slate-700 text-indigo-300 text-[10px] rounded-lg px-2 py-0.5 focus:outline-none focus:border-indigo-500 max-w-[210px] truncate disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <option value="">(Không lồng voice)</option>
+                                  {multiVoices.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      🎵 {v.name} ({v.duration.toFixed(1)}s)
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Inline Scene Inspector */}
+                              {isSelected &&
+                                activeSlot &&
+                                activeSlotIdx >= 0 && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-3 p-3.5 rounded-xl bg-slate-900 border border-rose-500/40 space-y-3 animate-in fade-in duration-200"
+                                  >
+                                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-rose-300 uppercase px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/30">
+                                          Cảnh {activeSlot.category}
+                                        </span>
+                                        <span
+                                          className="text-xs text-slate-200 truncate max-w-[180px]"
+                                          title={activeSlot.shotLabel}
+                                        >
+                                          {activeSlot.shotLabel}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                                          (Gốc:{" "}
+                                          {(
+                                            activeSlot.originalVideoEnd ||
+                                            activeSlot.videoEnd
+                                          ).toFixed(1)}
+                                          s)
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {/* Compact Mirror Toggle Button */}
+                                        <button
+                                          type="button"
+                                          disabled={!canEditMix}
+                                          onClick={() =>
+                                            handleUpdateComposedSlot(
+                                              comp.id,
+                                              activeSlotIdx,
+                                              {
+                                                flipH: !activeSlot.flipH,
+                                              },
+                                            )
+                                          }
+                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold border transition ${
+                                            activeSlot.flipH
+                                              ? "bg-rose-600/30 text-rose-300 border-rose-500/60 shadow-sm"
+                                              : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                                          } ${!canEditMix ? "opacity-50 cursor-not-allowed" : ""}`}
+                                          title={
+                                            !canEditMix
+                                              ? "Chế độ chỉ xem, không thể đổi mirror"
+                                              : "Lật gương ngang hình ảnh (Mirror)"
+                                          }
+                                        >
+                                          <FlipHorizontal className="w-3.5 h-3.5" />
+                                          <span>
+                                            {activeSlot.flipH
+                                              ? "Đang lật gương"
+                                              : "Lật gương"}
+                                          </span>
+                                        </button>
+
+                                        <button
+                                          onClick={() => {
+                                            setPreviewMode("slot");
+                                            setActiveSlotFocusIndex(
+                                              activeSlotIdx,
+                                            );
+                                            setPlayTrigger((prev) => prev + 1);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 transition"
+                                          title="Phát thử đoạn video này trên player"
+                                        >
+                                          <Play className="w-3 h-3 text-rose-400 fill-current" />
+                                          <span>Xem đoạn này</span>
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingSlotCategory(null);
+                                            setPreviewMode("full");
+                                          }}
+                                          className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800"
+                                          title="Thu gọn bảng chỉnh sửa"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                      {/* Speed Controls */}
+                                      <div className="space-y-1.5 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 flex flex-col justify-between">
+                                        <div>
+                                          <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between mb-1.5">
+                                            <span>Tốc độ phát:</span>
+                                            <span className="text-rose-400 font-mono font-bold">
+                                              {activeSlot.speed}x
+                                            </span>
+                                          </label>
+                                          <div className="flex items-center gap-1 flex-wrap mb-2">
+                                            {[
+                                              0.5, 0.75, 1.0, 1.25, 1.5, 2.0,
+                                            ].map((spd) => (
+                                              <button
+                                                key={spd}
+                                                type="button"
+                                                disabled={!canEditMix}
+                                                onClick={() =>
+                                                  handleUpdateComposedSlot(
+                                                    comp.id,
+                                                    activeSlotIdx,
+                                                    { speed: spd },
+                                                  )
+                                                }
+                                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition ${
+                                                  activeSlot.speed === spd
+                                                    ? "bg-rose-600 text-white font-bold"
+                                                    : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                              >
+                                                {spd}x
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <input
+                                            type="range"
+                                            min="0.25"
+                                            max="3.0"
+                                            step="0.05"
                                             disabled={!canEditMix}
-                                            onClick={() =>
+                                            value={activeSlot.speed}
+                                            onChange={(e) =>
                                               handleUpdateComposedSlot(
                                                 comp.id,
                                                 activeSlotIdx,
-                                                { speed: spd }
+                                                {
+                                                  speed:
+                                                    parseFloat(
+                                                      e.target.value,
+                                                    ) || 1.0,
+                                                },
                                               )
                                             }
-                                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition ${
-                                              activeSlot.speed === spd
-                                                ? "bg-rose-600 text-white font-bold"
-                                                : "bg-slate-800 hover:bg-slate-700 text-slate-300"
-                                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                          >
-                                            {spd}x
-                                          </button>
-                                        )
-                                      )}
-                                    </div>
-                                    <input
-                                      type="range"
-                                      min="0.25"
-                                      max="3.0"
-                                      step="0.05"
-                                      disabled={!canEditMix}
-                                      value={activeSlot.speed}
-                                      onChange={(e) =>
-                                        handleUpdateComposedSlot(
-                                          comp.id,
-                                          activeSlotIdx,
-                                          {
-                                            speed:
-                                              parseFloat(e.target.value) || 1.0,
+                                            className="w-full accent-rose-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                          />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-800/80">
+                                          Cắt{" "}
+                                          {(
+                                            activeSlot.videoEnd -
+                                            activeSlot.videoBegin
+                                          ).toFixed(1)}
+                                          s ÷ {activeSlot.speed}x ={" "}
+                                          <span className="text-emerald-400 font-bold">
+                                            {(
+                                              (activeSlot.videoEnd -
+                                                activeSlot.videoBegin) /
+                                              activeSlot.speed
+                                            ).toFixed(1)}
+                                            s
+                                          </span>
+                                        </p>
+                                      </div>
+
+                                      {/* Apple Photos / iPhone Dual-Handle Video Trimmer (2 cols) */}
+                                      <div className="sm:col-span-2">
+                                        <IPhoneVideoTrimmer
+                                          videoBegin={activeSlot.videoBegin}
+                                          videoEnd={activeSlot.videoEnd}
+                                          maxDuration={
+                                            activeSlot.originalVideoEnd ||
+                                            activeSlot.videoEnd ||
+                                            10
                                           }
-                                        )
-                                      }
-                                      className="w-full accent-rose-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                    />
+                                          onChange={(begin, end) =>
+                                            handleUpdateComposedSlot(
+                                              comp.id,
+                                              activeSlotIdx,
+                                              {
+                                                videoBegin: begin,
+                                                videoEnd: end,
+                                              },
+                                            )
+                                          }
+                                          onScrubStart={() => {
+                                            setIsScrubbing(true);
+                                            setPreviewMode("slot");
+                                            setActiveSlotFocusIndex(
+                                              activeSlotIdx,
+                                            );
+                                          }}
+                                          onScrubMove={(sourceSec) => {
+                                            setScrubSourceSec(sourceSec);
+                                          }}
+                                          onScrubEnd={() => {
+                                            setIsScrubbing(false);
+                                          }}
+                                          onSeekPreview={(targetSec) => {
+                                            setActiveSlotFocusIndex(
+                                              activeSlotIdx,
+                                            );
+                                            const timelinePos =
+                                              activeSlot.enterBegin +
+                                              (targetSec -
+                                                activeSlot.videoBegin) /
+                                                (activeSlot.speed || 1);
+                                            setPreviewSeekSec(timelinePos);
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
-                                  <p className="text-[10px] text-slate-400 font-mono pt-1 border-t border-slate-800/80">
-                                    Cắt{" "}
-                                    {(
-                                      activeSlot.videoEnd -
-                                      activeSlot.videoBegin
-                                    ).toFixed(1)}
-                                    s ÷ {activeSlot.speed}x ={" "}
-                                    <span className="text-emerald-400 font-bold">
-                                      {(
-                                        (activeSlot.videoEnd -
-                                          activeSlot.videoBegin) /
-                                        activeSlot.speed
-                                      ).toFixed(1)}
-                                      s
-                                    </span>
-                                  </p>
-                                </div>
-
-                                {/* Apple Photos / iPhone Dual-Handle Video Trimmer (2 cols) */}
-                                <div className="sm:col-span-2">
-                                  <IPhoneVideoTrimmer
-                                    videoBegin={activeSlot.videoBegin}
-                                    videoEnd={activeSlot.videoEnd}
-                                    maxDuration={
-                                      activeSlot.originalVideoEnd ||
-                                      activeSlot.videoEnd ||
-                                      10
-                                    }
-                                    onChange={(begin, end) =>
-                                      handleUpdateComposedSlot(
-                                        comp.id,
-                                        activeSlotIdx,
-                                        {
-                                          videoBegin: begin,
-                                          videoEnd: end,
-                                        }
-                                      )
-                                    }
-                                    onScrubStart={() => {
-                                      setIsScrubbing(true);
-                                      setPreviewMode("slot");
-                                      setActiveSlotFocusIndex(activeSlotIdx);
-                                    }}
-                                    onScrubMove={(sourceSec) => {
-                                      setScrubSourceSec(sourceSec);
-                                    }}
-                                    onScrubEnd={() => {
-                                      setIsScrubbing(false);
-                                    }}
-                                    onSeekPreview={(targetSec) => {
-                                      setActiveSlotFocusIndex(activeSlotIdx);
-                                      const timelinePos =
-                                        activeSlot.enterBegin +
-                                        (targetSec - activeSlot.videoBegin) /
-                                          (activeSlot.speed || 1);
-                                      setPreviewSeekSec(timelinePos);
-                                    }}
-                                  />
-                                </div>
-                              </div>
+                                )}
                             </div>
-                          )}
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Right: 9:16 Canvas Preview */}
+                    <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-between space-y-4">
+                      <div className="w-full flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-white">
+                            Web canvas preview 9:16
+                          </h3>
+                          <p className="text-xs text-slate-400">
+                            Chuyển cảnh 0ms (Ping-Pong Video A/B)
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
 
-                {/* Right: 9:16 Canvas Preview */}
-                <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-between space-y-4">
-                  <div className="w-full flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-white">
-                        Web canvas preview 9:16
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        Chuyển cảnh 0ms (Ping-Pong Video A/B)
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedComposed ? (
-                    <PreviewPlayer916
-                      composed={selectedComposed}
-                      sourceVideo={state.sourceVideo}
-                      voiceTrack={selectedVoiceTrack}
-                      enableVoice={Boolean(selectedVoiceTrack)}
-                      previewMode={previewMode}
-                      isolatedSlotIndex={
-                        previewMode === "slot" &&
-                        typeof activeSlotFocusIndex === "number"
-                          ? activeSlotFocusIndex
-                          : null
-                      }
-                      isScrubbing={isScrubbing}
-                      scrubSourceSec={scrubSourceSec}
-                      playTrigger={playTrigger}
-                      pauseTrigger={pauseTrigger}
-                      onPlayingChange={setIsPreviewPlaying}
-                      activeSlotFocusIndex={activeSlotFocusIndex}
-                      seekTimelineSec={previewSeekSec}
-                      onSlotFocusChange={(idx) => {
-                        setActiveSlotFocusIndex(idx);
-                        const cat = selectedComposed.slots[idx]?.category;
-                        if (cat) setEditingSlotCategory(cat);
-                        setPreviewMode("slot");
-                      }}
-                    />
-                  ) : (
-                    <div className="h-[480px] flex items-center justify-center text-xs text-slate-500">
-                      Hãy tạo tổ hợp để xem trước.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Direct Local Export Section */}
-            {canExportMix && state?.composedVideos && state.composedVideos.length > 0 && (
-              <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-sm font-bold flex items-center gap-2 text-white">
-                      <Download className="w-4 h-4 text-emerald-400" />
-                      <span>Xuất toàn bộ các video tổ hợp về máy tính</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Render trực tiếp qua FFmpeg (1080×1920 MP4) và lưu thẳng
-                      về máy không qua trung gian.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={handleRenderAllComposedZip}
-                      disabled={Boolean(busyMessage)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>
-                        Tải ZIP toàn bộ ({state.composedVideos.length} MP4)
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: LỊCH SỬ RENDER */}
-        {mainTab === "history" && (
-          <div className="space-y-5 animate-in fade-in duration-150">
-            {/* Header Toolbar */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center border border-indigo-500/30 text-indigo-400 shrink-0">
-                    <History className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-extrabold text-white flex items-center gap-2.5">
-                      <span>Lịch sử video đã render</span>
-                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                        {renderedHistoryList.length} video
-                      </span>
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Quản lý trạng thái sử dụng của từng video đã xuất file.
-                      Thuật toán tự động ghi nhận và loại trừ các cảnh này khi
-                      tạo mẻ video mới.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Export Dropdown */}
-                  {canExportHistory && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        disabled={renderedHistoryList.length === 0}
-                        onClick={() => setShowExportMenu((prev) => !prev)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition disabled:opacity-50"
-                        title="Xuất toàn bộ lịch sử video ra file bảng tính"
-                      >
-                        <Download className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Xuất file</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                      </button>
-
-                      {showExportMenu && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setShowExportMenu(false)}
-                          />
-                          <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                              type="button"
-                              onClick={() => handleExportHistory("xlsx")}
-                              className="w-full px-3.5 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                              <span>Xuất Excel (.xlsx)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleExportHistory("csv")}
-                              className="w-full px-3.5 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition"
-                            >
-                              <Code2 className="w-4 h-4 text-sky-400" />
-                              <span>Xuất CSV (.csv)</span>
-                            </button>
-                          </div>
-                        </>
+                      {selectedComposed ? (
+                        <PreviewPlayer916
+                          composed={selectedComposed}
+                          sourceVideo={state.sourceVideo}
+                          voiceTrack={selectedVoiceTrack}
+                          enableVoice={Boolean(selectedVoiceTrack)}
+                          previewMode={previewMode}
+                          isolatedSlotIndex={
+                            previewMode === "slot" &&
+                            typeof activeSlotFocusIndex === "number"
+                              ? activeSlotFocusIndex
+                              : null
+                          }
+                          isScrubbing={isScrubbing}
+                          scrubSourceSec={scrubSourceSec}
+                          playTrigger={playTrigger}
+                          pauseTrigger={pauseTrigger}
+                          onPlayingChange={setIsPreviewPlaying}
+                          activeSlotFocusIndex={activeSlotFocusIndex}
+                          seekTimelineSec={previewSeekSec}
+                          onSlotFocusChange={(idx) => {
+                            setActiveSlotFocusIndex(idx);
+                            const cat = selectedComposed.slots[idx]?.category;
+                            if (cat) setEditingSlotCategory(cat);
+                            setPreviewMode("slot");
+                          }}
+                        />
+                      ) : (
+                        <div className="h-[480px] flex items-center justify-center text-xs text-slate-500">
+                          Hãy tạo tổ hợp để xem trước.
+                        </div>
                       )}
                     </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={fetchRenderedHistory}
-                    disabled={isLoadingHistory}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition disabled:opacity-50"
-                    title="Tải lại danh sách lịch sử"
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${
-                        isLoadingHistory ? "animate-spin text-indigo-400" : ""
-                      }`}
-                    />
-                    <span>Làm mới</span>
-                  </button>
-                  {renderedHistoryList.length > 0 && (
-                    <PermissionGate module="history" action="edit">
-                      <button
-                        type="button"
-                        onClick={() => setShowClearHistoryConfirmModal(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold transition"
-                        title="Xóa toàn bộ lịch sử video đã render của dự án này"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Xóa toàn bộ lịch sử</span>
-                      </button>
-                    </PermissionGate>
-                  )}
-                </div>
-              </div>
-
-              {/* Filters, Search & Sort Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-                {/* Status Filter Tabs */}
-                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setHistoryFilterStatus("all")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                      historyFilterStatus === "all"
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    Tất cả ({historyCounts.all})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHistoryFilterStatus("unused")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 ${
-                      historyFilterStatus === "unused"
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    <span>Chưa sử dụng ({historyCounts.unused})</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHistoryFilterStatus("used")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 ${
-                      historyFilterStatus === "used"
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span>Đã sử dụng ({historyCounts.used})</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
-                  {/* Search Input */}
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={historySearchText}
-                      onChange={(e) => setHistorySearchText(e.target.value)}
-                      placeholder="Tìm theo tên video, cảnh..."
-                      className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                    />
-                    {historySearchText && (
-                      <button
-                        type="button"
-                        onClick={() => setHistorySearchText("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
+                )}
 
-                  {/* Sort Order Toggle */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setHistorySortOrder((prev) =>
-                        prev === "desc" ? "asc" : "desc"
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition"
-                    title={`Đang sắp xếp: ${
-                      historySortOrder === "desc"
-                        ? "Mới nhất trước"
-                        : "Cũ nhất trước"
-                    }`}
-                  >
-                    <ArrowUpDown className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="hidden sm:inline">
-                      {historySortOrder === "desc"
-                        ? "Mới nhất trước"
-                        : "Cũ nhất trước"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
+                {/* Direct Local Export Section */}
+                {canExportMix &&
+                  state?.composedVideos &&
+                  state.composedVideos.length > 0 && (
+                    <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-sm font-bold flex items-center gap-2 text-white">
+                            <Download className="w-4 h-4 text-emerald-400" />
+                            <span>
+                              Xuất toàn bộ các video tổ hợp về máy tính
+                            </span>
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Render trực tiếp qua FFmpeg (1080×1920 MP4) và lưu
+                            thẳng về máy không qua trung gian.
+                          </p>
+                        </div>
 
-            {/* Table or Empty/Loading State */}
-            {isLoadingHistory ? (
-              <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-400">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-                <span className="text-xs font-medium">
-                  Đang tải danh sách lịch sử render...
-                </span>
-              </div>
-            ) : renderedHistoryList.length === 0 ? (
-              <div className="py-20 px-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-500 shadow-inner">
-                  <Film className="w-8 h-8" />
-                </div>
-                <div className="max-w-md space-y-1">
-                  <h3 className="text-sm font-bold text-white">
-                    Chưa có video nào trong lịch sử render
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Khi bạn xuất file MP4 đơn lẻ hoặc tải ZIP toàn bộ ở tab
-                    &quot;Trộn ghép&quot;, các video sẽ tự động được lưu vào đây
-                    và không bị trùng cảnh ở các lần tạo tiếp theo.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMainTab("mix")}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25"
-                >
-                  <Shuffle className="w-4 h-4" />
-                  <span>Sang tab trộn ghép ngay</span>
-                </button>
-              </div>
-            ) : filteredHistoryList.length === 0 ? (
-              <div className="py-16 px-6 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2">
-                <Search className="w-7 h-7 text-slate-500 mb-1" />
-                <h3 className="text-sm font-bold text-white">
-                  Không tìm thấy video phù hợp
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm khác.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHistoryFilterStatus("all");
-                    setHistorySearchText("");
-                  }}
-                  className="mt-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 underline"
-                >
-                  Đặt lại bộ lọc
-                </button>
-              </div>
-            ) : (
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                        <th className="py-3.5 px-4 w-12 text-center">STT</th>
-                        <th className="py-3.5 px-4 min-w-[220px]">Tên video</th>
-                        <th className="py-3.5 px-3 w-28 text-center">
-                          Thời lượng
-                        </th>
-                        <th className="py-3.5 px-4 min-w-[240px]">
-                          5 Cảnh tổ hợp
-                        </th>
-                        <th className="py-3.5 px-3 min-w-[120px]">Voice</th>
-                        <PermissionGate module="history" action="edit">
-                          <th className="py-3.5 px-4 w-44 text-center">
-                            Trạng thái
-                          </th>
-                        </PermissionGate>
-                        <th className="py-3.5 px-4 w-24 text-right">
-                          Thao tác
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {paginatedHistoryList.map((rec, rIdx) => {
-                        const comp = rec.payload as ComposedVideo | undefined;
-                        const isUsed = rec.status === "used";
-                        const globalIdx =
-                          (historyPage - 1) * historyPageSize + rIdx + 1;
-                        const dateStr = rec.renderedAt
-                          ? new Date(rec.renderedAt).toLocaleString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : "";
-                        const voiceItem = comp?.voiceTrackId
-                          ? multiVoices.find((v) => v.id === comp.voiceTrackId)
-                          : null;
-
-                        return (
-                          <tr
-                            key={rec.id || rIdx}
-                            onClick={() => setSelectedHistoryDetail(rec)}
-                            className="hover:bg-slate-800/40 transition cursor-pointer group"
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={handleRenderAllComposedZip}
+                            disabled={Boolean(busyMessage)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
                           >
-                            {/* STT */}
-                            <td className="py-3 px-4 text-center text-slate-400 font-mono">
-                              #{globalIdx}
-                            </td>
-
-                            {/* Tên video & ngày render */}
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-white group-hover:text-indigo-300 transition line-clamp-1">
-                                {rec.name || `Video #${globalIdx}`}
-                              </div>
-                              {dateStr && (
-                                <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                                  ⏱️ {dateStr}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Thời lượng */}
-                            <td className="py-3 px-3 text-center">
-                              {comp?.finalDuration ? (
-                                <span className="inline-block px-2 py-0.5 rounded-full font-mono font-bold text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                                  {comp.finalDuration.toFixed(1)}s
-                                </span>
-                              ) : (
-                                <span className="text-slate-500">-</span>
-                              )}
-                            </td>
-
-                            {/* 5 Cảnh tổ hợp */}
-                            <td className="py-3 px-4">
-                              {comp?.slots && comp.slots.length > 0 ? (
-                                <div className="flex items-center gap-1">
-                                  {comp.slots.map((s, sIdx) => {
-                                    const catMeta = SHOT_CATEGORIES.find(
-                                      (c) => c.id === s.category
-                                    );
-                                    return (
-                                      <div
-                                        key={sIdx}
-                                        className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border truncate max-w-[80px] ${
-                                          catMeta?.badgeClass ||
-                                          "bg-slate-800 text-slate-300 border-slate-700"
-                                        }`}
-                                        title={`${s.category.toUpperCase()}: ${
-                                          s.shotLabel || s.shotId
-                                        } (${s.videoBegin.toFixed(
-                                          1
-                                        )}s - ${s.videoEnd.toFixed(1)}s)`}
-                                      >
-                                        {s.category.slice(0, 1).toUpperCase()}:{" "}
-                                        {s.shotLabel || s.shotId}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span
-                                  className="text-slate-500 font-mono text-[11px] truncate max-w-[180px] block"
-                                  title={rec.tupleKey}
-                                >
-                                  {rec.tupleKey}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Voice */}
-                            <td className="py-3 px-3">
-                              {comp?.voiceTrackId ? (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 rounded-full truncate max-w-[120px]"
-                                  title={voiceItem?.name || "Có lồng voice"}
-                                >
-                                  🎙️ {voiceItem?.name || "Voice"}
-                                </span>
-                              ) : (
-                                <span className="text-slate-500 font-mono">
-                                  -
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Trạng thái (Switch toggle) */}
-                            <PermissionGate module="history" action="edit">
-                              <td
-                                className="py-3 px-4 text-center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={isUsed}
-                                    onClick={(e) =>
-                                      handleToggleHistoryStatus(rec, e)
-                                    }
-                                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none cursor-pointer ${
-                                      isUsed ? "bg-emerald-500" : "bg-slate-700"
-                                    }`}
-                                    title={
-                                      isUsed
-                                        ? "Bấm để đánh dấu là chưa sử dụng"
-                                        : "Bấm để đánh dấu là đã sử dụng"
-                                    }
-                                  >
-                                    <span
-                                      aria-hidden="true"
-                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                        isUsed ? "translate-x-4" : "translate-x-0"
-                                      }`}
-                                    />
-                                  </button>
-                                  <span
-                                    className={`text-[11px] font-medium select-none min-w-[75px] text-left ${
-                                      isUsed
-                                        ? "text-emerald-400 font-bold"
-                                        : "text-slate-400"
-                                    }`}
-                                  >
-                                    {isUsed ? "Đã dùng" : "Chưa dùng"}
-                                  </span>
-                                </div>
-                              </td>
-                            </PermissionGate>
-
-                            {/* Thao tác */}
-                            <td
-                              className="py-3 px-4 text-right"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="flex items-center justify-end gap-1.5">
-                                {comp && (
-                                  <PermissionGate module="history" action="export">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleRenderSingleComposed(comp)
-                                      }
-                                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-                                      title="Tải lại file MP4 này về máy"
-                                    >
-                                      <Download className="w-3.5 h-3.5 text-emerald-400" />
-                                    </button>
-                                  </PermissionGate>
-                                )}
-                                <PermissionGate module="history" action="edit">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setHistoryItemPendingDelete(rec)
-                                    }
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition"
-                                    title="Xóa bản ghi này khỏi lịch sử"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </PermissionGate>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Footer */}
-                <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-slate-800/80 bg-slate-950/40 text-xs text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <span>
-                      Hiển thị{" "}
-                      <strong className="text-white">
-                        {(historyPage - 1) * historyPageSize + 1}
-                      </strong>
-                      –
-                      <strong className="text-white">
-                        {Math.min(
-                          filteredHistoryList.length,
-                          historyPage * historyPageSize
-                        )}
-                      </strong>{" "}
-                      trên tổng số{" "}
-                      <strong className="text-white">
-                        {filteredHistoryList.length}
-                      </strong>{" "}
-                      video
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {/* Page Size Selector */}
-                    <div className="flex items-center gap-1.5">
-                      <span>Dòng mỗi trang:</span>
-                      <select
-                        value={historyPageSize}
-                        onChange={(e) =>
-                          setHistoryPageSize(Number(e.target.value))
-                        }
-                        className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                        <option value={50}>50</option>
-                      </select>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>
+                              Tải ZIP toàn bộ ({state.composedVideos.length}{" "}
+                              MP4)
+                            </span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Pagination Page Controls */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={historyPage <= 1}
-                        onClick={() =>
-                          setHistoryPage((prev) => Math.max(1, prev - 1))
-                        }
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-800 transition"
-                        title="Trang trước"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-2 font-mono text-slate-300">
-                        {historyPage} / {totalHistoryPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={historyPage >= totalHistoryPages}
-                        onClick={() =>
-                          setHistoryPage((prev) =>
-                            Math.min(totalHistoryPages, prev + 1)
-                          )
-                        }
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-800 transition"
-                        title="Trang tiếp theo"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  )}
               </div>
             )}
 
-            {/* SLIDE-OVER DRAWER CHI TIẾT VIDEO (TRƯỢT TỪ BÊN PHẢI) */}
-            {selectedHistoryDetail && (
-              <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
-                {/* Backdrop */}
-                <div
-                  onClick={() => setSelectedHistoryDetail(null)}
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-                />
-
-                <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-                  <div className="w-screen max-w-xl sm:max-w-2xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 overflow-hidden">
-                    {/* Drawer Header */}
-                    <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/60">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-extrabold text-white truncate">
-                            {selectedHistoryDetail.name || "Chi tiết video"}
-                          </h3>
-                        </div>
-                        {selectedHistoryDetail.renderedAt && (
-                          <p className="text-xs text-slate-400 font-mono mt-0.5">
-                            ⏱️ Đã render lúc:{" "}
-                            {new Date(
-                              selectedHistoryDetail.renderedAt
-                            ).toLocaleString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}
-                          </p>
-                        )}
+            {/* TAB 3: LỊCH SỬ RENDER */}
+            {mainTab === "history" && (
+              <div className="space-y-5 animate-in fade-in duration-150">
+                {/* Header Toolbar */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center border border-indigo-500/30 text-indigo-400 shrink-0">
+                        <History className="w-5 h-5" />
                       </div>
-
-                      {/* Status Toggle on Drawer Header */}
-                      <div className="flex items-center gap-3">
-                        <PermissionGate module="history" action="edit">
-                          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={
-                                selectedHistoryDetail.status === "used"
-                              }
-                              onClick={() =>
-                                handleToggleHistoryStatus(selectedHistoryDetail)
-                              }
-                              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none cursor-pointer ${
-                                selectedHistoryDetail.status === "used"
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-700"
-                              }`}
-                              title={
-                                selectedHistoryDetail.status === "used"
-                                  ? "Bấm để đánh dấu là chưa sử dụng"
-                                  : "Bấm để đánh dấu là đã sử dụng"
-                              }
-                            >
-                              <span
-                                aria-hidden="true"
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                  selectedHistoryDetail.status === "used"
-                                    ? "translate-x-4"
-                                    : "translate-x-0"
-                                }`}
-                              />
-                            </button>
-                            <span
-                              className={`text-xs font-semibold select-none ${
-                                selectedHistoryDetail.status === "used"
-                                  ? "text-emerald-400 font-bold"
-                                  : "text-slate-400"
-                              }`}
-                            >
-                              {selectedHistoryDetail.status === "used"
-                                ? "Đã sử dụng"
-                                : "Chưa sử dụng"}
-                            </span>
-                          </div>
-                        </PermissionGate>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedHistoryDetail(null)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                          title="Đóng chi tiết"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
+                      <div>
+                        <h2 className="text-base font-extrabold text-white flex items-center gap-2.5">
+                          <span>Lịch sử video đã render</span>
+                          <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                            {renderedHistoryList.length} video
+                          </span>
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Quản lý trạng thái sử dụng của từng video đã xuất
+                          file. Thuật toán tự động ghi nhận và loại trừ các cảnh
+                          này khi tạo mẻ video mới.
+                        </p>
                       </div>
                     </div>
 
-                    {/* Drawer Body */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-6 space-y-6 min-w-0">
-                      {/* Video Preview Player */}
-                      {selectedHistoryDetail.payload ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                              <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
-                              <span>Màn hình xem lại video 9:16</span>
-                            </h4>
-                            {(selectedHistoryDetail.payload as ComposedVideo)
-                              ?.finalDuration && (
-                              <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
-                                Thời lượng:{" "}
-                                {(
-                                  selectedHistoryDetail.payload as ComposedVideo
-                                ).finalDuration.toFixed(1)}
-                                s
-                              </span>
+                    <div className="flex items-center gap-2">
+                      {/* Export Dropdown */}
+                      {canExportHistory && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            disabled={renderedHistoryList.length === 0}
+                            onClick={() => setShowExportMenu((prev) => !prev)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition disabled:opacity-50"
+                            title="Xuất toàn bộ lịch sử video ra file bảng tính"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Xuất file</span>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                          </button>
+
+                          {showExportMenu && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowExportMenu(false)}
+                              />
+                              <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-slate-900 border border-slate-700/80 shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportHistory("xlsx")}
+                                  className="w-full px-3.5 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition"
+                                >
+                                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                                  <span>Xuất Excel (.xlsx)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportHistory("csv")}
+                                  className="w-full px-3.5 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition"
+                                >
+                                  <Code2 className="w-4 h-4 text-sky-400" />
+                                  <span>Xuất CSV (.csv)</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={fetchRenderedHistory}
+                        disabled={isLoadingHistory}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition disabled:opacity-50"
+                        title="Tải lại danh sách lịch sử"
+                      >
+                        <RefreshCw
+                          className={`w-3.5 h-3.5 ${
+                            isLoadingHistory
+                              ? "animate-spin text-indigo-400"
+                              : ""
+                          }`}
+                        />
+                        <span>Làm mới</span>
+                      </button>
+                      {renderedHistoryList.length > 0 && (
+                        <PermissionGate module="history" action="edit">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowClearHistoryConfirmModal(true)
+                            }
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold transition"
+                            title="Xóa toàn bộ lịch sử video đã render của dự án này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa toàn bộ lịch sử</span>
+                          </button>
+                        </PermissionGate>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filters, Search & Sort Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+                    {/* Status Filter Tabs */}
+                    <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setHistoryFilterStatus("all")}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition ${
+                          historyFilterStatus === "all"
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        Tất cả ({historyCounts.all})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryFilterStatus("unused")}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                          historyFilterStatus === "unused"
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-slate-400" />
+                        <span>Chưa sử dụng ({historyCounts.unused})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryFilterStatus("used")}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                          historyFilterStatus === "used"
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span>Đã sử dụng ({historyCounts.used})</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
+                      {/* Search Input */}
+                      <div className="relative flex-1 sm:w-64">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={historySearchText}
+                          onChange={(e) => setHistorySearchText(e.target.value)}
+                          placeholder="Tìm theo tên video, cảnh..."
+                          className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                        />
+                        {historySearchText && (
+                          <button
+                            type="button"
+                            onClick={() => setHistorySearchText("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Sort Order Toggle */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setHistorySortOrder((prev) =>
+                            prev === "desc" ? "asc" : "desc",
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition"
+                        title={`Đang sắp xếp: ${
+                          historySortOrder === "desc"
+                            ? "Mới nhất trước"
+                            : "Cũ nhất trước"
+                        }`}
+                      >
+                        <ArrowUpDown className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="hidden sm:inline">
+                          {historySortOrder === "desc"
+                            ? "Mới nhất trước"
+                            : "Cũ nhất trước"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table or Empty/Loading State */}
+                {isLoadingHistory ? (
+                  <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-400">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                    <span className="text-xs font-medium">
+                      Đang tải danh sách lịch sử render...
+                    </span>
+                  </div>
+                ) : renderedHistoryList.length === 0 ? (
+                  <div className="py-20 px-6 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-500 shadow-inner">
+                      <Film className="w-8 h-8" />
+                    </div>
+                    <div className="max-w-md space-y-1">
+                      <h3 className="text-sm font-bold text-white">
+                        Chưa có video nào trong lịch sử render
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Khi bạn xuất file MP4 đơn lẻ hoặc tải ZIP toàn bộ ở tab
+                        &quot;Trộn ghép&quot;, các video sẽ tự động được lưu vào
+                        đây và không bị trùng cảnh ở các lần tạo tiếp theo.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMainTab("mix")}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25"
+                    >
+                      <Shuffle className="w-4 h-4" />
+                      <span>Sang tab trộn ghép ngay</span>
+                    </button>
+                  </div>
+                ) : filteredHistoryList.length === 0 ? (
+                  <div className="py-16 px-6 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2">
+                    <Search className="w-7 h-7 text-slate-500 mb-1" />
+                    <h3 className="text-sm font-bold text-white">
+                      Không tìm thấy video phù hợp
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Thử đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm khác.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHistoryFilterStatus("all");
+                        setHistorySearchText("");
+                      }}
+                      className="mt-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 underline"
+                    >
+                      Đặt lại bộ lọc
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                            <th className="py-3.5 px-4 w-12 text-center">
+                              STT
+                            </th>
+                            <th className="py-3.5 px-4 min-w-[220px]">
+                              Tên video
+                            </th>
+                            <th className="py-3.5 px-3 w-28 text-center">
+                              Thời lượng
+                            </th>
+                            <th className="py-3.5 px-4 min-w-[240px]">
+                              5 Cảnh tổ hợp
+                            </th>
+                            <th className="py-3.5 px-3 min-w-[120px]">Voice</th>
+                            <PermissionGate module="history" action="edit">
+                              <th className="py-3.5 px-4 w-44 text-center">
+                                Trạng thái
+                              </th>
+                            </PermissionGate>
+                            <th className="py-3.5 px-4 w-24 text-right">
+                              Thao tác
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {paginatedHistoryList.map((rec, rIdx) => {
+                            const comp = rec.payload as
+                              | ComposedVideo
+                              | undefined;
+                            const isUsed = rec.status === "used";
+                            const globalIdx =
+                              (historyPage - 1) * historyPageSize + rIdx + 1;
+                            const dateStr = rec.renderedAt
+                              ? new Date(rec.renderedAt).toLocaleString(
+                                  "vi-VN",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  },
+                                )
+                              : "";
+                            const voiceItem = comp?.voiceTrackId
+                              ? multiVoices.find(
+                                  (v) => v.id === comp.voiceTrackId,
+                                )
+                              : null;
+
+                            return (
+                              <tr
+                                key={rec.id || rIdx}
+                                onClick={() => setSelectedHistoryDetail(rec)}
+                                className="hover:bg-slate-800/40 transition cursor-pointer group"
+                              >
+                                {/* STT */}
+                                <td className="py-3 px-4 text-center text-slate-400 font-mono">
+                                  #{globalIdx}
+                                </td>
+
+                                {/* Tên video & ngày render */}
+                                <td className="py-3 px-4">
+                                  <div className="font-bold text-white group-hover:text-indigo-300 transition line-clamp-1">
+                                    {rec.name || `Video #${globalIdx}`}
+                                  </div>
+                                  {dateStr && (
+                                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                      ⏱️ {dateStr}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Thời lượng */}
+                                <td className="py-3 px-3 text-center">
+                                  {comp?.finalDuration ? (
+                                    <span className="inline-block px-2 py-0.5 rounded-full font-mono font-bold text-[11px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                                      {comp.finalDuration.toFixed(1)}s
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500">-</span>
+                                  )}
+                                </td>
+
+                                {/* 5 Cảnh tổ hợp */}
+                                <td className="py-3 px-4">
+                                  {comp?.slots && comp.slots.length > 0 ? (
+                                    <div className="flex items-center gap-1">
+                                      {comp.slots.map((s, sIdx) => {
+                                        const catMeta = SHOT_CATEGORIES.find(
+                                          (c) => c.id === s.category,
+                                        );
+                                        return (
+                                          <div
+                                            key={sIdx}
+                                            className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold border truncate max-w-[80px] ${
+                                              catMeta?.badgeClass ||
+                                              "bg-slate-800 text-slate-300 border-slate-700"
+                                            }`}
+                                            title={`${s.category.toUpperCase()}: ${
+                                              s.shotLabel || s.shotId
+                                            } (${s.videoBegin.toFixed(
+                                              1,
+                                            )}s - ${s.videoEnd.toFixed(1)}s)`}
+                                          >
+                                            {s.category
+                                              .slice(0, 1)
+                                              .toUpperCase()}
+                                            : {s.shotLabel || s.shotId}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <span
+                                      className="text-slate-500 font-mono text-[11px] truncate max-w-[180px] block"
+                                      title={rec.tupleKey}
+                                    >
+                                      {rec.tupleKey}
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Voice */}
+                                <td className="py-3 px-3">
+                                  {comp?.voiceTrackId ? (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[11px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 rounded-full truncate max-w-[120px]"
+                                      title={voiceItem?.name || "Có lồng voice"}
+                                    >
+                                      🎙️ {voiceItem?.name || "Voice"}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500 font-mono">
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Trạng thái (Switch toggle) */}
+                                <PermissionGate module="history" action="edit">
+                                  <td
+                                    className="py-3 px-4 text-center"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={isUsed}
+                                        onClick={(e) =>
+                                          handleToggleHistoryStatus(rec, e)
+                                        }
+                                        className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none cursor-pointer ${
+                                          isUsed
+                                            ? "bg-emerald-500"
+                                            : "bg-slate-700"
+                                        }`}
+                                        title={
+                                          isUsed
+                                            ? "Bấm để đánh dấu là chưa sử dụng"
+                                            : "Bấm để đánh dấu là đã sử dụng"
+                                        }
+                                      >
+                                        <span
+                                          aria-hidden="true"
+                                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                            isUsed
+                                              ? "translate-x-4"
+                                              : "translate-x-0"
+                                          }`}
+                                        />
+                                      </button>
+                                      <span
+                                        className={`text-[11px] font-medium select-none min-w-[75px] text-left ${
+                                          isUsed
+                                            ? "text-emerald-400 font-bold"
+                                            : "text-slate-400"
+                                        }`}
+                                      >
+                                        {isUsed ? "Đã dùng" : "Chưa dùng"}
+                                      </span>
+                                    </div>
+                                  </td>
+                                </PermissionGate>
+
+                                {/* Thao tác */}
+                                <td
+                                  className="py-3 px-4 text-right"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {comp && (
+                                      <PermissionGate
+                                        module="history"
+                                        action="export"
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleRenderSingleComposed(comp)
+                                          }
+                                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+                                          title="Tải lại file MP4 này về máy"
+                                        >
+                                          <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                        </button>
+                                      </PermissionGate>
+                                    )}
+                                    <PermissionGate
+                                      module="history"
+                                      action="edit"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setHistoryItemPendingDelete(rec)
+                                        }
+                                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition"
+                                        title="Xóa bản ghi này khỏi lịch sử"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </PermissionGate>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-slate-800/80 bg-slate-950/40 text-xs text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span>
+                          Hiển thị{" "}
+                          <strong className="text-white">
+                            {(historyPage - 1) * historyPageSize + 1}
+                          </strong>
+                          –
+                          <strong className="text-white">
+                            {Math.min(
+                              filteredHistoryList.length,
+                              historyPage * historyPageSize,
+                            )}
+                          </strong>{" "}
+                          trên tổng số{" "}
+                          <strong className="text-white">
+                            {filteredHistoryList.length}
+                          </strong>{" "}
+                          video
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {/* Page Size Selector */}
+                        <div className="flex items-center gap-1.5">
+                          <span>Dòng mỗi trang:</span>
+                          <select
+                            value={historyPageSize}
+                            onChange={(e) =>
+                              setHistoryPageSize(Number(e.target.value))
+                            }
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                          </select>
+                        </div>
+
+                        {/* Pagination Page Controls */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={historyPage <= 1}
+                            onClick={() =>
+                              setHistoryPage((prev) => Math.max(1, prev - 1))
+                            }
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-800 transition"
+                            title="Trang trước"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="px-2 font-mono text-slate-300">
+                            {historyPage} / {totalHistoryPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={historyPage >= totalHistoryPages}
+                            onClick={() =>
+                              setHistoryPage((prev) =>
+                                Math.min(totalHistoryPages, prev + 1),
+                              )
+                            }
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:hover:bg-slate-800 transition"
+                            title="Trang tiếp theo"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE-OVER DRAWER CHI TIẾT VIDEO (TRƯỢT TỪ BÊN PHẢI) */}
+                {selectedHistoryDetail && (
+                  <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+                    {/* Backdrop */}
+                    <div
+                      onClick={() => setSelectedHistoryDetail(null)}
+                      className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                    />
+
+                    <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+                      <div className="w-screen max-w-xl sm:max-w-2xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 overflow-hidden">
+                        {/* Drawer Header */}
+                        <div className="p-5 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/60">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base font-extrabold text-white truncate">
+                                {selectedHistoryDetail.name || "Chi tiết video"}
+                              </h3>
+                            </div>
+                            {selectedHistoryDetail.renderedAt && (
+                              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                                ⏱️ Đã render lúc:{" "}
+                                {new Date(
+                                  selectedHistoryDetail.renderedAt,
+                                ).toLocaleString("vi-VN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                })}
+                              </p>
                             )}
                           </div>
 
-                          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex justify-center">
-                            {(() => {
-                              const comp =
-                                selectedHistoryDetail.payload as ComposedVideo;
-                              const vItem = comp?.voiceTrackId
-                                ? multiVoices.find(
-                                    (v) => v.id === comp.voiceTrackId
-                                  )
-                                : null;
-                              const vTrack: VoiceTrack | null = vItem
-                                ? {
-                                    id: vItem.id,
-                                    name: vItem.name,
-                                    fileName: vItem.fileName,
-                                    localUrl: vItem.localUrl,
-                                    localPath: vItem.localPath || "",
-                                    sizeBytes: 0,
-                                    duration: vItem.duration || 20,
-                                    createdAt: "",
+                          {/* Status Toggle on Drawer Header */}
+                          <div className="flex items-center gap-3">
+                            <PermissionGate module="history" action="edit">
+                              <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={
+                                    selectedHistoryDetail.status === "used"
                                   }
-                                : null;
-                              return (
-                                <PreviewPlayer916
-                                  composed={comp}
-                                  sourceVideo={state.sourceVideo}
-                                  voiceTrack={vTrack}
-                                  enableVoice={Boolean(vTrack)}
-                                />
-                              );
-                            })()}
+                                  onClick={() =>
+                                    handleToggleHistoryStatus(
+                                      selectedHistoryDetail,
+                                    )
+                                  }
+                                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none cursor-pointer ${
+                                    selectedHistoryDetail.status === "used"
+                                      ? "bg-emerald-500"
+                                      : "bg-slate-700"
+                                  }`}
+                                  title={
+                                    selectedHistoryDetail.status === "used"
+                                      ? "Bấm để đánh dấu là chưa sử dụng"
+                                      : "Bấm để đánh dấu là đã sử dụng"
+                                  }
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                      selectedHistoryDetail.status === "used"
+                                        ? "translate-x-4"
+                                        : "translate-x-0"
+                                    }`}
+                                  />
+                                </button>
+                                <span
+                                  className={`text-xs font-semibold select-none ${
+                                    selectedHistoryDetail.status === "used"
+                                      ? "text-emerald-400 font-bold"
+                                      : "text-slate-400"
+                                  }`}
+                                >
+                                  {selectedHistoryDetail.status === "used"
+                                    ? "Đã sử dụng"
+                                    : "Chưa sử dụng"}
+                                </span>
+                              </div>
+                            </PermissionGate>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedHistoryDetail(null)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                              title="Đóng chi tiết"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
                           </div>
                         </div>
-                      ) : (
-                        <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-500">
-                          Bản ghi này thuộc phiên bản trước, không có snapshot
-                          cảnh để preview trực tiếp.
-                        </div>
-                      )}
 
-                      {/* 5 Cảnh Category Details */}
-                      {(selectedHistoryDetail.payload as ComposedVideo)
-                        ?.slots && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Chi tiết 5 cảnh trong tổ hợp</span>
-                          </h4>
+                        {/* Drawer Body */}
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-6 space-y-6 min-w-0">
+                          {/* Video Preview Player */}
+                          {selectedHistoryDetail.payload ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                  <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
+                                  <span>Màn hình xem lại video 9:16</span>
+                                </h4>
+                                {(
+                                  selectedHistoryDetail.payload as ComposedVideo
+                                )?.finalDuration && (
+                                  <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
+                                    Thời lượng:{" "}
+                                    {(
+                                      selectedHistoryDetail.payload as ComposedVideo
+                                    ).finalDuration.toFixed(1)}
+                                    s
+                                  </span>
+                                )}
+                              </div>
 
-                          <div className="space-y-2.5">
-                            {(
-                              selectedHistoryDetail.payload as ComposedVideo
-                            ).slots.map((s, idx) => {
-                              const catMeta = SHOT_CATEGORIES.find(
-                                (c) => c.id === s.category
-                              );
-                              const driveLink = getGoogleDriveLinkFromSlot(s);
+                              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex justify-center">
+                                {(() => {
+                                  const comp =
+                                    selectedHistoryDetail.payload as ComposedVideo;
+                                  const vItem = comp?.voiceTrackId
+                                    ? multiVoices.find(
+                                        (v) => v.id === comp.voiceTrackId,
+                                      )
+                                    : null;
+                                  const vTrack: VoiceTrack | null = vItem
+                                    ? {
+                                        id: vItem.id,
+                                        name: vItem.name,
+                                        fileName: vItem.fileName,
+                                        localUrl: vItem.localUrl,
+                                        localPath: vItem.localPath || "",
+                                        sizeBytes: 0,
+                                        duration: vItem.duration || 20,
+                                        createdAt: "",
+                                      }
+                                    : null;
+                                  return (
+                                    <PreviewPlayer916
+                                      composed={comp}
+                                      sourceVideo={state.sourceVideo}
+                                      voiceTrack={vTrack}
+                                      enableVoice={Boolean(vTrack)}
+                                    />
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-xs text-slate-500">
+                              Bản ghi này thuộc phiên bản trước, không có
+                              snapshot cảnh để preview trực tiếp.
+                            </div>
+                          )}
 
-                              return (
-                                <div
-                                  key={idx}
-                                  className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                      <span
-                                        className={`w-[72px] shrink-0 text-center px-1.5 py-1 rounded text-[10px] font-extrabold uppercase border tracking-wider ${
-                                          catMeta?.badgeClass ||
-                                          "text-slate-300"
-                                        }`}
-                                      >
-                                        {s.category}
-                                      </span>
+                          {/* 5 Cảnh Category Details */}
+                          {(selectedHistoryDetail.payload as ComposedVideo)
+                            ?.slots && (
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>Chi tiết 5 cảnh trong tổ hợp</span>
+                              </h4>
+
+                              <div className="space-y-2.5">
+                                {(
+                                  selectedHistoryDetail.payload as ComposedVideo
+                                ).slots.map((s, idx) => {
+                                  const catMeta = SHOT_CATEGORIES.find(
+                                    (c) => c.id === s.category,
+                                  );
+                                  const driveLink =
+                                    getGoogleDriveLinkFromSlot(s);
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs"
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                          <span
+                                            className={`w-[72px] shrink-0 text-center px-1.5 py-1 rounded text-[10px] font-extrabold uppercase border tracking-wider ${
+                                              catMeta?.badgeClass ||
+                                              "text-slate-300"
+                                            }`}
+                                          >
+                                            {s.category}
+                                          </span>
+                                          <div className="min-w-0 flex-1 space-y-0.5">
+                                            <div className="font-semibold text-slate-200 truncate">
+                                              {s.shotLabel || s.shotId}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                                              <span className="shrink-0">
+                                                Cắt gốc:{" "}
+                                                {s.videoBegin.toFixed(1)}s →{" "}
+                                                {s.videoEnd.toFixed(1)}s
+                                              </span>
+                                              {driveLink ? (
+                                                <>
+                                                  <span className="text-slate-600 shrink-0">
+                                                    •
+                                                  </span>
+                                                  <a
+                                                    href={driveLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sky-400 hover:text-sky-300 hover:underline inline-flex items-center gap-1 truncate max-w-[150px] sm:max-w-[220px]"
+                                                    title={`Mở video gốc trên Google Drive: ${driveLink}`}
+                                                  >
+                                                    <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
+                                                    <span className="truncate">
+                                                      {driveLink}
+                                                    </span>
+                                                    <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                                  </a>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <span className="text-slate-600 shrink-0">
+                                                    •
+                                                  </span>
+                                                  <span className="text-slate-500 italic shrink-0">
+                                                    File máy tính
+                                                  </span>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 font-mono text-[11px] shrink-0">
+                                          {s.speed && s.speed !== 1 && (
+                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                                              {s.speed}x
+                                            </span>
+                                          )}
+                                          {s.flipH && (
+                                            <span className="px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30">
+                                              Mirror
+                                            </span>
+                                          )}
+                                          <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
+                                            {(s.exitEnd - s.enterBegin).toFixed(
+                                              1,
+                                            )}
+                                            s
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Voice Track Details */}
+                          {(selectedHistoryDetail.payload as ComposedVideo)
+                            ?.voiceTrackId && (
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <Mic className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>Giọng lồng tiếng (Voiceover)</span>
+                              </h4>
+                              {(() => {
+                                const vItem = multiVoices.find(
+                                  (v) =>
+                                    v.id ===
+                                    (
+                                      selectedHistoryDetail.payload as ComposedVideo
+                                    ).voiceTrackId,
+                                );
+                                const voiceDriveLink =
+                                  getGoogleDriveLinkFromVoice(vItem);
+
+                                return (
+                                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+                                    <div className="flex items-center justify-between gap-2">
                                       <div className="min-w-0 flex-1 space-y-0.5">
-                                        <div className="font-semibold text-slate-200 truncate">
-                                          {s.shotLabel || s.shotId}
+                                        <div className="font-medium text-slate-200 font-mono truncate">
+                                          🎙️ {vItem?.name || "Track lồng voice"}
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-                                          <span className="shrink-0">
-                                            Cắt gốc: {s.videoBegin.toFixed(1)}s
-                                            → {s.videoEnd.toFixed(1)}s
+                                          <span className="text-emerald-400 shrink-0">
+                                            Đã hòa âm
                                           </span>
-                                          {driveLink ? (
+                                          {voiceDriveLink ? (
                                             <>
                                               <span className="text-slate-600 shrink-0">
                                                 •
                                               </span>
                                               <a
-                                                href={driveLink}
+                                                href={voiceDriveLink}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sky-400 hover:text-sky-300 hover:underline inline-flex items-center gap-1 truncate max-w-[150px] sm:max-w-[220px]"
-                                                title={`Mở video gốc trên Google Drive: ${driveLink}`}
+                                                className="text-sky-400 hover:text-sky-300 hover:underline inline-flex items-center gap-1 truncate max-w-[180px] sm:max-w-[260px]"
+                                                title={`Mở file voice trên Google Drive: ${voiceDriveLink}`}
                                               >
                                                 <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
                                                 <span className="truncate">
-                                                  {driveLink}
+                                                  {voiceDriveLink}
                                                 </span>
                                                 <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
                                               </a>
@@ -6572,948 +6887,885 @@ export default function StudioWorkspace({
                                           )}
                                         </div>
                                       </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 font-mono text-[11px] shrink-0">
-                                      {s.speed && s.speed !== 1 && (
-                                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                                          {s.speed}x
-                                        </span>
-                                      )}
-                                      {s.flipH && (
-                                        <span className="px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30">
-                                          Mirror
-                                        </span>
-                                      )}
-                                      <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                                        {(s.exitEnd - s.enterBegin).toFixed(1)}s
+                                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                        Voiceover
                                       </span>
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                                );
+                              })()}
+                            </div>
+                          )}
 
-                      {/* Voice Track Details */}
-                      {(selectedHistoryDetail.payload as ComposedVideo)
-                        ?.voiceTrackId && (
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <Mic className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Giọng lồng tiếng (Voiceover)</span>
-                          </h4>
-                          {(() => {
-                            const vItem = multiVoices.find(
-                              (v) =>
-                                v.id ===
-                                (selectedHistoryDetail.payload as ComposedVideo)
-                                  .voiceTrackId
-                            );
-                            const voiceDriveLink =
-                              getGoogleDriveLinkFromVoice(vItem);
-
-                            return (
-                              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="min-w-0 flex-1 space-y-0.5">
-                                    <div className="font-medium text-slate-200 font-mono truncate">
-                                      🎙️ {vItem?.name || "Track lồng voice"}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-                                      <span className="text-emerald-400 shrink-0">
-                                        Đã hòa âm
-                                      </span>
-                                      {voiceDriveLink ? (
-                                        <>
-                                          <span className="text-slate-600 shrink-0">
-                                            •
-                                          </span>
-                                          <a
-                                            href={voiceDriveLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sky-400 hover:text-sky-300 hover:underline inline-flex items-center gap-1 truncate max-w-[180px] sm:max-w-[260px]"
-                                            title={`Mở file voice trên Google Drive: ${voiceDriveLink}`}
-                                          >
-                                            <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
-                                            <span className="truncate">
-                                              {voiceDriveLink}
-                                            </span>
-                                            <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
-                                          </a>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <span className="text-slate-600 shrink-0">
-                                            •
-                                          </span>
-                                          <span className="text-slate-500 italic shrink-0">
-                                            File máy tính
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 shrink-0">
-                                    Voiceover
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Tuple Key */}
-                      <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 min-w-0 max-w-full">
-                        <p
-                          className="truncate min-w-0 flex-1 select-all cursor-text"
-                          title={`Mã tổ hợp: ${selectedHistoryDetail.tupleKey}`}
-                        >
-                          <span className="shrink-0">Mã tổ hợp: </span>
-                          <span className="text-slate-400">
-                            {selectedHistoryDetail.tupleKey}
-                          </span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              selectedHistoryDetail.tupleKey
-                            );
-                            addToast({
-                              type: "info",
-                              text: "Đã sao chép mã tổ hợp vào clipboard.",
-                            });
-                          }}
-                          className="shrink-0 p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition"
-                          title="Sao chép mã tổ hợp"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Drawer Footer Actions */}
-                    <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        {selectedHistoryDetail.payload && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handlePreviewHistoryComposed(
-                                selectedHistoryDetail
-                              );
-                              setSelectedHistoryDetail(null);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm"
-                          >
-                            <Shuffle className="w-3.5 h-3.5" />
-                            <span>Mở trên tab trộn ghép</span>
-                          </button>
-                        )}
-                        {selectedHistoryDetail.payload && (
-                          <PermissionGate module="history" action="export">
+                          {/* Tuple Key */}
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 min-w-0 max-w-full">
+                            <p
+                              className="truncate min-w-0 flex-1 select-all cursor-text"
+                              title={`Mã tổ hợp: ${selectedHistoryDetail.tupleKey}`}
+                            >
+                              <span className="shrink-0">Mã tổ hợp: </span>
+                              <span className="text-slate-400">
+                                {selectedHistoryDetail.tupleKey}
+                              </span>
+                            </p>
                             <button
                               type="button"
-                              onClick={() =>
-                                handleRenderSingleComposed(
-                                  selectedHistoryDetail.payload as ComposedVideo
-                                )
-                              }
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  selectedHistoryDetail.tupleKey,
+                                );
+                                addToast({
+                                  type: "info",
+                                  text: "Đã sao chép mã tổ hợp vào clipboard.",
+                                });
+                              }}
+                              className="shrink-0 p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition"
+                              title="Sao chép mã tổ hợp"
                             >
-                              <Download className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Tải lại MP4</span>
+                              <Copy className="w-3.5 h-3.5" />
                             </button>
-                          </PermissionGate>
-                        )}
-                      </div>
+                          </div>
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setSelectedHistoryDetail(null)}
-                        className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
-                      >
-                        Đóng
-                      </button>
+                        {/* Drawer Footer Actions */}
+                        <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            {selectedHistoryDetail.payload && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handlePreviewHistoryComposed(
+                                    selectedHistoryDetail,
+                                  );
+                                  setSelectedHistoryDetail(null);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm"
+                              >
+                                <Shuffle className="w-3.5 h-3.5" />
+                                <span>Mở trên tab trộn ghép</span>
+                              </button>
+                            )}
+                            {selectedHistoryDetail.payload && (
+                              <PermissionGate module="history" action="export">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRenderSingleComposed(
+                                      selectedHistoryDetail.payload as ComposedVideo,
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Tải lại MP4</span>
+                                </button>
+                              </PermissionGate>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedHistoryDetail(null)}
+                            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+                          >
+                            Đóng
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
+          </main>
+        </div>
+
+        {/* Slide-over Drawer: Lịch sử & tra cứu link Google Drive */}
+        {showDriveHistoryDrawer && (
+          <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div
+              className="absolute inset-0"
+              onClick={() => setShowDriveHistoryDrawer(false)}
+            />
+            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-none">
+              <div className="w-screen max-w-2xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
+                {/* Header */}
+                <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white">
+                          Lịch sử link Google Drive
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                          {allDriveLinks.length} link
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Toàn bộ link Google Drive đã nạp trong kho của dự án
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDriveHistoryDrawer(false)}
+                    className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                    title="Đóng drawer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Search & Filter Toolbar */}
+                <div className="p-4 border-b border-slate-800 bg-slate-900/60 space-y-3">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={driveHistorySearchText}
+                      onChange={(e) =>
+                        setDriveHistorySearchText(e.target.value)
+                      }
+                      placeholder="Tìm theo link Drive, File ID hoặc tên file..."
+                      className="w-full pl-9 pr-9 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition"
+                    />
+                    {driveHistorySearchText && (
+                      <button
+                        type="button"
+                        onClick={() => setDriveHistorySearchText("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setDriveHistoryCategoryFilter("all")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                        driveHistoryCategoryFilter === "all"
+                          ? "bg-sky-600 text-white"
+                          : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      }`}
+                    >
+                      Tất cả ({allDriveLinks.length})
+                    </button>
+                    {CATEGORY_ORDER.map((cat) => {
+                      const count = allDriveLinks.filter(
+                        (l) => l.category === cat,
+                      ).length;
+                      const meta = SHOT_CATEGORIES.find((c) => c.id === cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setDriveHistoryCategoryFilter(cat)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                            driveHistoryCategoryFilter === cat
+                              ? "bg-sky-600 text-white"
+                              : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                          }`}
+                        >
+                          {meta?.label || cat} ({count})
+                        </button>
+                      );
+                    })}
+                    {(() => {
+                      const voiceCount = allDriveLinks.filter(
+                        (l) => l.category === "voice",
+                      ).length;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setDriveHistoryCategoryFilter("voice")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                            driveHistoryCategoryFilter === "voice"
+                              ? "bg-sky-600 text-white"
+                              : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                          }`}
+                        >
+                          Voice ({voiceCount})
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Items List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+                  {filteredDriveLinks.length === 0 ? (
+                    <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-xs text-slate-400 space-y-2">
+                      <Cloud className="w-8 h-8 text-slate-600" />
+                      <div>Không tìm thấy link Google Drive nào phù hợp.</div>
+                    </div>
+                  ) : (
+                    filteredDriveLinks.map((item) => {
+                      const catMeta = SHOT_CATEGORIES.find(
+                        (c) => c.id === item.category,
+                      );
+                      return (
+                        <div
+                          key={`${item.category}-${item.id}`}
+                          className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-slate-700 transition space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                                  item.category === "voice"
+                                    ? "border-indigo-500/40 text-indigo-300 bg-indigo-500/10"
+                                    : catMeta?.badgeClass ||
+                                      "border-slate-700 text-slate-200"
+                                }`}
+                              >
+                                {item.category === "voice"
+                                  ? "Voice"
+                                  : catMeta?.label || item.category}
+                              </span>
+                              <span
+                                className="text-xs font-medium text-slate-200 truncate"
+                                title={item.name}
+                              >
+                                {item.name}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {item.duration > 0 && (
+                                <span className="text-xs font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                                  {item.duration.toFixed(1)}s
+                                </span>
+                              )}
+                              <PermissionGate module="mix" action="edit">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (item.category === "voice") {
+                                      handleRemoveVoiceItem(item.id);
+                                    } else {
+                                      handleRemoveCategoryItem(
+                                        item.category as ShotCategory,
+                                        item.id,
+                                      );
+                                    }
+                                    addToast({
+                                      type: "info",
+                                      text: "Đã xóa clip khỏi kho.",
+                                    });
+                                  }}
+                                  className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition"
+                                  title="Xóa khỏi kho"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </PermissionGate>
+                            </div>
+                          </div>
+
+                          {/* Link detail row */}
+                          <div className="flex items-center justify-between gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/80 text-[11px] font-mono">
+                            <a
+                              href={item.driveUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sky-400 hover:text-sky-300 hover:underline truncate inline-flex items-center gap-1.5"
+                              title={`Mở link trên Google Drive: ${item.driveUrl}`}
+                            >
+                              <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
+                              <span className="truncate">{item.driveUrl}</span>
+                              <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(item.driveUrl);
+                                addToast({
+                                  type: "info",
+                                  text: "Đã sao chép link Google Drive vào clipboard.",
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shrink-0 text-[10px]"
+                              title="Sao chép link"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Sao chép</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between">
+                  <span className="text-xs text-slate-400 font-mono">
+                    Hiển thị {filteredDriveLinks.length} /{" "}
+                    {allDriveLinks.length} link Drive
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDriveHistoryDrawer(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-      </main>
 
-      {/* Slide-over Drawer: Lịch sử & tra cứu link Google Drive */}
-      {showDriveHistoryDrawer && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="absolute inset-0"
-            onClick={() => setShowDriveHistoryDrawer(false)}
-          />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-none">
-            <div className="w-screen max-w-2xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
-              {/* Header */}
-              <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                    <Cloud className="w-5 h-5" />
+        {/* Single Category Google Drive Paste Modal */}
+        {singleCategoryDriveModal && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 flex items-center justify-center border border-sky-500/40">
+                    <Cloud className="w-4 h-4 text-sky-400" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-white">
-                        Lịch sử link Google Drive
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                        {allDriveLinks.length} link
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      Toàn bộ link Google Drive đã nạp trong kho của dự án
+                    <h3 className="text-sm font-bold text-white">
+                      Dán link Google Drive cho mục{" "}
+                      {singleCategoryDriveModal.category === "voice"
+                        ? "Voice (lồng tiếng)"
+                        : singleCategoryDriveModal.category.toUpperCase()}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Nhập danh sách link Google Drive công khai (mỗi dòng 1
+                      link hoặc dấu phẩy)
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowDriveHistoryDrawer(false)}
-                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
-                  title="Đóng drawer"
+                  onClick={() => setSingleCategoryDriveModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  title="Đóng modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Search & Filter Toolbar */}
-              <div className="p-4 border-b border-slate-800 bg-slate-900/60 space-y-3">
-                <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={driveHistorySearchText}
-                    onChange={(e) => setDriveHistorySearchText(e.target.value)}
-                    placeholder="Tìm theo link Drive, File ID hoặc tên file..."
-                    className="w-full pl-9 pr-9 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-sky-500 transition"
-                  />
-                  {driveHistorySearchText && (
-                    <button
-                      type="button"
-                      onClick={() => setDriveHistorySearchText("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
-                      title="Xóa tìm kiếm"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Category Filter Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setDriveHistoryCategoryFilter("all")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                      driveHistoryCategoryFilter === "all"
-                        ? "bg-sky-600 text-white"
-                        : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                    }`}
-                  >
-                    Tất cả ({allDriveLinks.length})
-                  </button>
-                  {CATEGORY_ORDER.map((cat) => {
-                    const count = allDriveLinks.filter(
-                      (l) => l.category === cat
-                    ).length;
-                    const meta = SHOT_CATEGORIES.find((c) => c.id === cat);
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setDriveHistoryCategoryFilter(cat)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                          driveHistoryCategoryFilter === cat
-                            ? "bg-sky-600 text-white"
-                            : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                        }`}
-                      >
-                        {meta?.label || cat} ({count})
-                      </button>
-                    );
-                  })}
-                  {(() => {
-                    const voiceCount = allDriveLinks.filter(
-                      (l) => l.category === "voice"
-                    ).length;
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => setDriveHistoryCategoryFilter("voice")}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-                          driveHistoryCategoryFilter === "voice"
-                            ? "bg-sky-600 text-white"
-                            : "bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                        }`}
-                      >
-                        Voice ({voiceCount})
-                      </button>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
-                {filteredDriveLinks.length === 0 ? (
-                  <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-xs text-slate-400 space-y-2">
-                    <Cloud className="w-8 h-8 text-slate-600" />
-                    <div>Không tìm thấy link Google Drive nào phù hợp.</div>
-                  </div>
-                ) : (
-                  filteredDriveLinks.map((item) => {
-                    const catMeta = SHOT_CATEGORIES.find(
-                      (c) => c.id === item.category
-                    );
-                    return (
-                      <div
-                        key={`${item.category}-${item.id}`}
-                        className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-slate-700 transition space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                                item.category === "voice"
-                                  ? "border-indigo-500/40 text-indigo-300 bg-indigo-500/10"
-                                  : catMeta?.badgeClass ||
-                                    "border-slate-700 text-slate-200"
-                              }`}
-                            >
-                              {item.category === "voice"
-                                ? "Voice"
-                                : catMeta?.label || item.category}
-                            </span>
-                            <span
-                              className="text-xs font-medium text-slate-200 truncate"
-                              title={item.name}
-                            >
-                              {item.name}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {item.duration > 0 && (
-                              <span className="text-xs font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                                {item.duration.toFixed(1)}s
-                              </span>
-                            )}
-                            <PermissionGate module="mix" action="edit">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (item.category === "voice") {
-                                    handleRemoveVoiceItem(item.id);
-                                  } else {
-                                    handleRemoveCategoryItem(
-                                      item.category as ShotCategory,
-                                      item.id
-                                    );
-                                  }
-                                  addToast({
-                                    type: "info",
-                                    text: "Đã xóa clip khỏi kho.",
-                                  });
-                                }}
-                                className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition"
-                                title="Xóa khỏi kho"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </PermissionGate>
-                          </div>
-                        </div>
-
-                        {/* Link detail row */}
-                        <div className="flex items-center justify-between gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/80 text-[11px] font-mono">
-                          <a
-                            href={item.driveUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sky-400 hover:text-sky-300 hover:underline truncate inline-flex items-center gap-1.5"
-                            title={`Mở link trên Google Drive: ${item.driveUrl}`}
-                          >
-                            <Cloud className="w-3 h-3 text-sky-400 shrink-0" />
-                            <span className="truncate">{item.driveUrl}</span>
-                            <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(item.driveUrl);
-                              addToast({
-                                type: "info",
-                                text: "Đã sao chép link Google Drive vào clipboard.",
-                              });
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition shrink-0 text-[10px]"
-                            title="Sao chép link"
-                          >
-                            <Copy className="w-3 h-3" />
-                            <span>Sao chép</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
+              <textarea
+                rows={6}
+                value={singleCategoryDriveModal.text}
+                onChange={(e) =>
+                  setSingleCategoryDriveModal({
+                    ...singleCategoryDriveModal,
+                    text: e.target.value,
                   })
-                )}
-              </div>
+                }
+                placeholder="https://drive.google.com/file/d/1abc.../view&#10;https://drive.google.com/file/d/2xyz.../view"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500 transition resize-y"
+              />
 
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-mono">
-                  Hiển thị {filteredDriveLinks.length} / {allDriveLinks.length}{" "}
-                  link Drive
-                </span>
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowDriveHistoryDrawer(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+                  onClick={() => setSingleCategoryDriveModal(null)}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition"
                 >
                   Đóng
                 </button>
+                <button
+                  type="button"
+                  disabled={
+                    !singleCategoryDriveModal.text.trim() || isIngestingDrive
+                  }
+                  onClick={() =>
+                    handleIngestSingleCategoryDrive(
+                      singleCategoryDriveModal.category,
+                      singleCategoryDriveModal.text,
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition shadow-lg shadow-sky-600/20 disabled:opacity-50"
+                >
+                  {isIngestingDrive ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5" />
+                  )}
+                  <span>Nạp vào mục này</span>
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Single Category Google Drive Paste Modal */}
-      {singleCategoryDriveModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-sky-500/20 flex items-center justify-center border border-sky-500/40">
-                  <Cloud className="w-4 h-4 text-sky-400" />
+        {/* Clear All Confirmation Modal */}
+        {showClearConfirmModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Ambient subtle glow */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
+                  <Trash2 className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white">
-                    Dán link Google Drive cho mục{" "}
-                    {singleCategoryDriveModal.category === "voice"
-                      ? "Voice (lồng tiếng)"
-                      : singleCategoryDriveModal.category.toUpperCase()}
+                    Xác nhận xoá trắng kho
                   </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Nhập danh sách link Google Drive công khai (mỗi dòng 1 link
-                    hoặc dấu phẩy)
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Bạn có chắc chắn muốn xóa toàn bộ clip trong kho, các file
+                    voice và toàn bộ tổ hợp đã tạo để bắt đầu mẻ mới?
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSingleCategoryDriveModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                title="Đóng modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <textarea
-              rows={6}
-              value={singleCategoryDriveModal.text}
-              onChange={(e) =>
-                setSingleCategoryDriveModal({
-                  ...singleCategoryDriveModal,
-                  text: e.target.value,
-                })
-              }
-              placeholder="https://drive.google.com/file/d/1abc.../view&#10;https://drive.google.com/file/d/2xyz.../view"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500 transition resize-y"
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSingleCategoryDriveModal(null)}
-                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition"
-              >
-                Đóng
-              </button>
-              <button
-                type="button"
-                disabled={
-                  !singleCategoryDriveModal.text.trim() || isIngestingDrive
-                }
-                onClick={() =>
-                  handleIngestSingleCategoryDrive(
-                    singleCategoryDriveModal.category,
-                    singleCategoryDriveModal.text
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition shadow-lg shadow-sky-600/20 disabled:opacity-50"
-              >
-                {isIngestingDrive ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Plus className="w-3.5 h-3.5" />
-                )}
-                <span>Nạp vào mục này</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear All Confirmation Modal */}
-      {showClearConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Ambient subtle glow */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white">
-                  Xác nhận xoá trắng kho
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Bạn có chắc chắn muốn xóa toàn bộ clip trong kho, các file
-                  voice và toàn bộ tổ hợp đã tạo để bắt đầu mẻ mới?
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-2 text-rose-300 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>Các mục sẽ bị dọn sạch vĩnh viễn:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
-                <li>
-                  Toàn bộ clip trong 5 thư mục (Open, Product, Texture, Apply,
-                  End)
-                </li>
-                <li>Toàn bộ file voice lồng tiếng đã nạp</li>
-                <li>Toàn bộ danh sách tổ hợp video đã tạo trong phiên này</li>
-                <li>Dữ liệu lưu trữ trong SQLite Cloud của dự án này</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                disabled={isClearingAll}
-                onClick={() => setShowClearConfirmModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                disabled={isClearingAll}
-                onClick={handleConfirmClearAll}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
-              >
-                {isClearingAll ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isClearingAll ? "Đang xóa..." : "Xác nhận xóa sạch"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear Render History Confirmation Modal */}
-      {showClearHistoryConfirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Ambient subtle glow */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white">
-                  Xác nhận xóa toàn bộ lịch sử
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Bạn có chắc chắn muốn xóa toàn bộ lịch sử các video đã render
-                  của dự án này?
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-2 text-amber-300 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>Lưu ý quan trọng:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
-                <li>
-                  Toàn bộ {renderedHistoryList.length} bản ghi video đã render
-                  sẽ bị xóa khỏi lịch sử.
-                </li>
-                <li>
-                  Sau khi xóa, các mẻ trộn tiếp theo có thể trùng với các
-                  clip/tổ hợp đã từng render trước đây.
-                </li>
-                <li>Hành động này không thể hoàn tác.</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                disabled={isClearingHistory}
-                onClick={() => setShowClearHistoryConfirmModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                disabled={isClearingHistory}
-                onClick={handleConfirmClearHistory}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
-              >
-                {isClearingHistory ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isClearingHistory ? "Đang xóa..." : "Xác nhận xóa"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mark All Rendered Confirmation Modal */}
-      {showMarkAllRenderedModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
-                <CheckCheck className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white">
-                  Xác nhận đánh dấu tất cả đã render
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Bạn có chắc muốn đánh dấu toàn bộ{" "}
-                  {state?.composedVideos?.length || 0} video trong danh sách tổ
-                  hợp này đã render?
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-2 text-emerald-300 font-medium">
-                <Info className="w-3.5 h-3.5 shrink-0" />
-                <span>Chi tiết thực hiện:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
-                <li>
-                  {unrecordedComposedCount > 0
-                    ? `Sẽ thêm ${unrecordedComposedCount} video mới vào lịch sử render (bỏ qua ${
-                        (state?.composedVideos?.length || 0) -
-                        unrecordedComposedCount
-                      } video đã có trong lịch sử).`
-                    : "Toàn bộ video trong danh sách đều đã có trong lịch sử render."}
-                </li>
-                <li>
-                  Hệ thống coi như bỏ qua bước tải MP4 về máy và lưu mã tổ hợp
-                  để tránh trùng lặp ở các lần trộn tiếp theo.
-                </li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                disabled={isMarkingAllRendered}
-                onClick={() => setShowMarkAllRenderedModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                disabled={isMarkingAllRendered || unrecordedComposedCount === 0}
-                onClick={handleConfirmMarkAllRendered}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/25 disabled:opacity-50"
-              >
-                {isMarkingAllRendered ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <CheckCheck className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isMarkingAllRendered
-                    ? "Đang ghi nhận..."
-                    : unrecordedComposedCount === 0
-                    ? "Đã có trong lịch sử"
-                    : "Đồng ý đánh dấu"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Single History Item Confirmation Modal */}
-      {historyItemPendingDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white">
-                  Xác nhận xóa bản ghi video
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Bạn có chắc muốn xóa video{" "}
-                  <span className="text-rose-300 font-bold">
-                    &quot;{historyItemPendingDelete.name || historyItemPendingDelete.id}&quot;
-                  </span>{" "}
-                  khỏi lịch sử render?
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
-              <div className="flex items-center gap-2 text-amber-300 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>Lưu ý quan trọng:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
-                <li>Bản ghi này sẽ bị xóa khỏi lịch sử render của dự án.</li>
-                <li>Sau khi xóa, tổ hợp các cảnh này có thể xuất hiện lại ở các lần trộn tiếp theo.</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                disabled={isDeletingHistoryItem}
-                onClick={() => setHistoryItemPendingDelete(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                disabled={isDeletingHistoryItem}
-                onClick={handleConfirmDeleteHistoryItem}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
-              >
-                {isDeletingHistoryItem ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                <span>
-                  {isDeletingHistoryItem ? "Đang xóa..." : "Xác nhận xóa"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Global Loading Overlay with Backdrop */}
-      {busyMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md px-4 transition-all animate-in fade-in duration-200">
-          <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-7 shadow-2xl flex flex-col items-center gap-4 max-w-sm w-full text-center relative overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Ambient glowing radial effects */}
-            <div className="absolute -top-12 -left-12 w-36 h-36 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Spinner with Loader2 */}
-            <div className="relative flex items-center justify-center my-1">
-              <div className="w-14 h-14 rounded-full border-4 border-slate-800 border-t-rose-500 animate-spin" />
-              <Loader2 className="w-6 h-6 text-rose-400 absolute animate-spin" />
-            </div>
-
-            {/* Title and Detail */}
-            <div className="space-y-1.5 z-10 w-full">
-              <h3 className="text-base font-semibold text-white tracking-wide">
-                {renderProgress
-                  ? "Đang kết xuất video..."
-                  : "Đang thực hiện..."}
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto font-mono">
-                {busyMessage}
-              </p>
-
-              {/* Real-time Render Progress Tracker */}
-              {renderProgress && (
-                <div className="pt-2 space-y-2 w-full">
-                  <div className="flex items-center justify-between text-xs font-mono font-bold px-1">
-                    <span className="text-emerald-400">
-                      {renderProgress.current} / {renderProgress.total} video
-                    </span>
-                    <span className="text-indigo-400 font-extrabold">
-                      {renderProgress.percent}%
-                    </span>
-                  </div>
-                  {renderProgress.name && (
-                    <div className="text-[11px] text-slate-400 truncate max-w-xs mx-auto">
-                      Đang xử lý:{" "}
-                      <span className="text-slate-200">
-                        {renderProgress.name}
-                      </span>
-                    </div>
-                  )}
-                  <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/60 p-0.5">
-                    <div
-                      className="bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm shadow-emerald-500/50"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(0, renderProgress.percent)
-                        )}%`,
-                      }}
-                    />
-                  </div>
+              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 text-rose-300 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Các mục sẽ bị dọn sạch vĩnh viễn:</span>
                 </div>
-              )}
-
-              {/* Real-time Upload Progress Tracker */}
-              {uploadProgress && (
-                <div className="pt-2 space-y-2 w-full">
-                  <div className="flex items-center justify-between text-xs font-mono font-bold px-1">
-                    <span className="text-emerald-400">
-                      {(uploadProgress.loadedBytes / 1024 / 1024).toFixed(1)} / {(uploadProgress.totalBytes / 1024 / 1024).toFixed(1)} MB
-                    </span>
-                    <span className="text-indigo-400 font-extrabold">
-                      {uploadProgress.percent}%
-                    </span>
-                  </div>
-                  {uploadProgress.fileName && (
-                    <div className="text-[11px] text-slate-400 truncate max-w-xs mx-auto">
-                      Đang nạp:{" "}
-                      <span className="text-slate-200 font-medium">
-                        {uploadProgress.fileName}
-                      </span>
-                    </div>
-                  )}
-                  <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/60 p-0.5">
-                    <div
-                      className="bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm shadow-rose-500/50"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.max(0, uploadProgress.percent)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Default animated progress bar pulse if no renderProgress and no uploadProgress */}
-            {!renderProgress && !uploadProgress && (
-              <div className="w-full bg-slate-800/80 rounded-full h-1 overflow-hidden mt-1">
-                <div className="bg-gradient-to-r from-rose-500 via-indigo-500 to-indigo-600 h-full w-full animate-pulse" />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Floating Toast Notifications */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none">
-        {toasts.map((toast) => {
-          const isSuccess = toast.type === "success";
-          const isError = toast.type === "error";
-          const isForbidden = toast.type === "forbidden";
-
-          return (
-            <div
-              key={toast.id}
-              className={`pointer-events-auto rounded-xl p-3.5 shadow-2xl border backdrop-blur-md flex items-start gap-3 transition-all transform translate-y-0 animate-in slide-in-from-bottom-5 duration-300 ${
-                isForbidden
-                  ? "bg-slate-900/95 border-amber-500/50 text-amber-100 shadow-amber-950/40"
-                  : isSuccess
-                  ? "bg-slate-900/95 border-emerald-500/40 text-emerald-100 shadow-emerald-950/40"
-                  : isError
-                  ? "bg-slate-900/95 border-rose-500/40 text-rose-100 shadow-rose-950/40"
-                  : "bg-slate-900/95 border-sky-500/40 text-sky-100 shadow-sky-950/40"
-              }`}
-            >
-              <div className="mt-0.5 shrink-0">
-                {isForbidden && (
-                  <ShieldAlert className="w-4 h-4 text-amber-400" />
-                )}
-                {!isForbidden && isSuccess && (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                )}
-                {!isForbidden && isError && (
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
-                )}
-                {!isForbidden && !isSuccess && !isError && (
-                  <Info className="w-4 h-4 text-sky-400" />
-                )}
+                <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
+                  <li>
+                    Toàn bộ clip trong 5 thư mục (Open, Product, Texture, Apply,
+                    End)
+                  </li>
+                  <li>Toàn bộ file voice lồng tiếng đã nạp</li>
+                  <li>Toàn bộ danh sách tổ hợp video đã tạo trong phiên này</li>
+                  <li>Dữ liệu lưu trữ trong SQLite Cloud của dự án này</li>
+                </ul>
               </div>
 
-              <div className="flex-1 text-xs leading-relaxed space-y-0.5 min-w-0">
-                <p
-                  className={`font-semibold ${
-                    isForbidden ? "text-amber-300" : "text-slate-100"
-                  }`}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  disabled={isClearingAll}
+                  onClick={() => setShowClearConfirmModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
                 >
-                  {toast.title ||
-                    (isForbidden
-                      ? "Từ chối truy cập (403)"
-                      : isSuccess
-                      ? "Thành công"
-                      : isError
-                      ? "Có lỗi xảy ra"
-                      : "Thông báo")}
-                </p>
-                <p className="text-slate-300 text-[11px] whitespace-pre-wrap break-words">
-                  {toast.text}
-                </p>
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isClearingAll}
+                  onClick={handleConfirmClearAll}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
+                >
+                  {isClearingAll ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {isClearingAll ? "Đang xóa..." : "Xác nhận xóa sạch"}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear Render History Confirmation Modal */}
+        {showClearHistoryConfirmModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Ambient subtle glow */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-white">
+                    Xác nhận xóa toàn bộ lịch sử
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Bạn có chắc chắn muốn xóa toàn bộ lịch sử các video đã
+                    render của dự án này?
+                  </p>
+                </div>
               </div>
 
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-200 transition p-0.5 rounded-lg hover:bg-slate-800 shrink-0"
-                title="Đóng thông báo"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 text-amber-300 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Lưu ý quan trọng:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
+                  <li>
+                    Toàn bộ {renderedHistoryList.length} bản ghi video đã render
+                    sẽ bị xóa khỏi lịch sử.
+                  </li>
+                  <li>
+                    Sau khi xóa, các mẻ trộn tiếp theo có thể trùng với các
+                    clip/tổ hợp đã từng render trước đây.
+                  </li>
+                  <li>Hành động này không thể hoàn tác.</li>
+                </ul>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  disabled={isClearingHistory}
+                  onClick={() => setShowClearHistoryConfirmModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isClearingHistory}
+                  onClick={handleConfirmClearHistory}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
+                >
+                  {isClearingHistory ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {isClearingHistory ? "Đang xóa..." : "Xác nhận xóa"}
+                  </span>
+                </button>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {/* Mark All Rendered Confirmation Modal */}
+        {showMarkAllRenderedModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
+                  <CheckCheck className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-white">
+                    Xác nhận đánh dấu tất cả đã render
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Bạn có chắc muốn đánh dấu toàn bộ{" "}
+                    {state?.composedVideos?.length || 0} video trong danh sách
+                    tổ hợp này đã render?
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 text-emerald-300 font-medium">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  <span>Chi tiết thực hiện:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
+                  <li>
+                    {unrecordedComposedCount > 0
+                      ? `Sẽ thêm ${unrecordedComposedCount} video mới vào lịch sử render (bỏ qua ${
+                          (state?.composedVideos?.length || 0) -
+                          unrecordedComposedCount
+                        } video đã có trong lịch sử).`
+                      : "Toàn bộ video trong danh sách đều đã có trong lịch sử render."}
+                  </li>
+                  <li>
+                    Hệ thống coi như bỏ qua bước tải MP4 về máy và lưu mã tổ hợp
+                    để tránh trùng lặp ở các lần trộn tiếp theo.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  disabled={isMarkingAllRendered}
+                  onClick={() => setShowMarkAllRenderedModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    isMarkingAllRendered || unrecordedComposedCount === 0
+                  }
+                  onClick={handleConfirmMarkAllRendered}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/25 disabled:opacity-50"
+                >
+                  {isMarkingAllRendered ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCheck className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {isMarkingAllRendered
+                      ? "Đang ghi nhận..."
+                      : unrecordedComposedCount === 0
+                        ? "Đã có trong lịch sử"
+                        : "Đồng ý đánh dấu"}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Single History Item Confirmation Modal */}
+        {historyItemPendingDelete && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-white">
+                    Xác nhận xóa bản ghi video
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Bạn có chắc muốn xóa video{" "}
+                    <span className="text-rose-300 font-bold">
+                      &quot;
+                      {historyItemPendingDelete.name ||
+                        historyItemPendingDelete.id}
+                      &quot;
+                    </span>{" "}
+                    khỏi lịch sử render?
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3 space-y-1.5 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 text-amber-300 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Lưu ý quan trọng:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 pl-1 text-slate-300">
+                  <li>Bản ghi này sẽ bị xóa khỏi lịch sử render của dự án.</li>
+                  <li>
+                    Sau khi xóa, tổ hợp các cảnh này có thể xuất hiện lại ở các
+                    lần trộn tiếp theo.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  disabled={isDeletingHistoryItem}
+                  onClick={() => setHistoryItemPendingDelete(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingHistoryItem}
+                  onClick={handleConfirmDeleteHistoryItem}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/25 disabled:opacity-50"
+                >
+                  {isDeletingHistoryItem ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {isDeletingHistoryItem ? "Đang xóa..." : "Xác nhận xóa"}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Loading Overlay with Backdrop */}
+        {busyMessage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md px-4 transition-all animate-in fade-in duration-200">
+            <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-7 shadow-2xl flex flex-col items-center gap-4 max-w-sm w-full text-center relative overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Ambient glowing radial effects */}
+              <div className="absolute -top-12 -left-12 w-36 h-36 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Spinner with Loader2 */}
+              <div className="relative flex items-center justify-center my-1">
+                <div className="w-14 h-14 rounded-full border-4 border-slate-800 border-t-rose-500 animate-spin" />
+                <Loader2 className="w-6 h-6 text-rose-400 absolute animate-spin" />
+              </div>
+
+              {/* Title and Detail */}
+              <div className="space-y-1.5 z-10 w-full">
+                <h3 className="text-base font-semibold text-white tracking-wide">
+                  {renderProgress
+                    ? "Đang kết xuất video..."
+                    : "Đang thực hiện..."}
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto font-mono">
+                  {busyMessage}
+                </p>
+
+                {/* Real-time Render Progress Tracker */}
+                {renderProgress && (
+                  <div className="pt-2 space-y-2 w-full">
+                    <div className="flex items-center justify-between text-xs font-mono font-bold px-1">
+                      <span className="text-emerald-400">
+                        {renderProgress.current} / {renderProgress.total} video
+                      </span>
+                      <span className="text-indigo-400 font-extrabold">
+                        {renderProgress.percent}%
+                      </span>
+                    </div>
+                    {renderProgress.name && (
+                      <div className="text-[11px] text-slate-400 truncate max-w-xs mx-auto">
+                        Đang xử lý:{" "}
+                        <span className="text-slate-200">
+                          {renderProgress.name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/60 p-0.5">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm shadow-emerald-500/50"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(0, renderProgress.percent),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Real-time Upload Progress Tracker */}
+                {uploadProgress && (
+                  <div className="pt-2 space-y-2 w-full">
+                    <div className="flex items-center justify-between text-xs font-mono font-bold px-1">
+                      <span className="text-emerald-400">
+                        {(uploadProgress.loadedBytes / 1024 / 1024).toFixed(1)}{" "}
+                        / {(uploadProgress.totalBytes / 1024 / 1024).toFixed(1)}{" "}
+                        MB
+                      </span>
+                      <span className="text-indigo-400 font-extrabold">
+                        {uploadProgress.percent}%
+                      </span>
+                    </div>
+                    {uploadProgress.fileName && (
+                      <div className="text-[11px] text-slate-400 truncate max-w-xs mx-auto">
+                        Đang nạp:{" "}
+                        <span className="text-slate-200 font-medium">
+                          {uploadProgress.fileName}
+                        </span>
+                      </div>
+                    )}
+                    <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/60 p-0.5">
+                      <div
+                        className="bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-500 h-full rounded-full transition-all duration-300 shadow-sm shadow-rose-500/50"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(0, uploadProgress.percent),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Default animated progress bar pulse if no renderProgress and no uploadProgress */}
+              {!renderProgress && !uploadProgress && (
+                <div className="w-full bg-slate-800/80 rounded-full h-1 overflow-hidden mt-1">
+                  <div className="bg-gradient-to-r from-rose-500 via-indigo-500 to-indigo-600 h-full w-full animate-pulse" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Floating Toast Notifications */}
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none">
+          {toasts.map((toast) => {
+            const isSuccess = toast.type === "success";
+            const isError = toast.type === "error";
+            const isForbidden = toast.type === "forbidden";
+
+            return (
+              <div
+                key={toast.id}
+                className={`pointer-events-auto rounded-xl p-3.5 shadow-2xl border backdrop-blur-md flex items-start gap-3 transition-all transform translate-y-0 animate-in slide-in-from-bottom-5 duration-300 ${
+                  isForbidden
+                    ? "bg-slate-900/95 border-amber-500/50 text-amber-100 shadow-amber-950/40"
+                    : isSuccess
+                      ? "bg-slate-900/95 border-emerald-500/40 text-emerald-100 shadow-emerald-950/40"
+                      : isError
+                        ? "bg-slate-900/95 border-rose-500/40 text-rose-100 shadow-rose-950/40"
+                        : "bg-slate-900/95 border-sky-500/40 text-sky-100 shadow-sky-950/40"
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {isForbidden && (
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                  )}
+                  {!isForbidden && isSuccess && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  )}
+                  {!isForbidden && isError && (
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  )}
+                  {!isForbidden && !isSuccess && !isError && (
+                    <Info className="w-4 h-4 text-sky-400" />
+                  )}
+                </div>
+
+                <div className="flex-1 text-xs leading-relaxed space-y-0.5 min-w-0">
+                  <p
+                    className={`font-semibold ${
+                      isForbidden ? "text-amber-300" : "text-slate-100"
+                    }`}
+                  >
+                    {toast.title ||
+                      (isForbidden
+                        ? "Từ chối truy cập (403)"
+                        : isSuccess
+                          ? "Thành công"
+                          : isError
+                            ? "Có lỗi xảy ra"
+                            : "Thông báo")}
+                  </p>
+                  <p className="text-slate-300 text-[11px] whitespace-pre-wrap break-words">
+                    {toast.text}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="text-slate-400 hover:text-slate-200 transition p-0.5 rounded-lg hover:bg-slate-800 shrink-0"
+                  title="Đóng thông báo"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {showShareModal && parentProjectIdState && (
+        <ShareProjectModal
+          projectId={parentProjectIdState}
+          projectName={parentProjectNameState || "Dự án"}
+          onClose={() => setShowShareModal(false)}
+          onToast={addToast}
+        />
+      )}
     </ProjectAccessProvider>
   );
 }

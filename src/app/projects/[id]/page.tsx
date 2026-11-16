@@ -280,7 +280,7 @@ export default function ProjectFoldersPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Top Header with Breadcrumbs */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-3.5 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -304,15 +304,27 @@ export default function ProjectFoldersPage() {
           </div>
         </div>
 
-        <UserAvatarMenu showProjectsShortcut={true} />
+        <div className="flex items-center gap-2.5 shrink-0">
+          {access?.isOwner && (
+            <button
+              type="button"
+              onClick={() => setShowShareModal(true)}
+              className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/40 flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+              title="Chia sẻ dự án"
+              aria-label="Chia sẻ dự án"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
+          <UserAvatarMenu showProjectsShortcut={true} />
+        </div>
       </header>
 
       <main className="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Project Header Banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-3xl p-7 relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+          {/* Project Header Section */}
+          <div className="pb-6 border-b border-slate-800/80">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl font-extrabold text-white tracking-tight">
