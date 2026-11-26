@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { buildComposedVideo } from "@/lib/planner";
 import { readProjectState, writeProjectState } from "@/lib/store";
 import {
   fetchZvidSchemaAndLimits,
@@ -8,7 +10,6 @@ import {
   uploadFileToZvid,
   validateZvidRender,
 } from "@/lib/zvid";
-import { buildComposedVideo } from "@/lib/planner";
 import { Shot } from "@/types/lachvid";
 
 /**
@@ -32,16 +33,11 @@ async function ensureAssetsUploadedAndRefreshPayloads(apiKey?: string) {
     });
     state.sourceVideo.zvidUploadId = uploaded.id;
     state.sourceVideo.zvidRemoteUrl = uploaded.url;
-    state.sourceVideo.zvidUploadedAt =
-      uploaded.createdAt || new Date().toISOString();
+    state.sourceVideo.zvidUploadedAt = uploaded.createdAt || new Date().toISOString();
     changed = true;
   }
 
-  if (
-    state.voiceTrack &&
-    !state.voiceTrack.zvidRemoteUrl &&
-    state.voiceTrack.localPath
-  ) {
+  if (state.voiceTrack && !state.voiceTrack.zvidRemoteUrl && state.voiceTrack.localPath) {
     const uploadedVoice = await uploadFileToZvid({
       localPath: state.voiceTrack.localPath,
       fileName: state.voiceTrack.fileName,
@@ -50,15 +46,13 @@ async function ensureAssetsUploadedAndRefreshPayloads(apiKey?: string) {
     });
     state.voiceTrack.zvidUploadId = uploadedVoice.id;
     state.voiceTrack.zvidRemoteUrl = uploadedVoice.url;
-    state.voiceTrack.zvidUploadedAt =
-      uploadedVoice.createdAt || new Date().toISOString();
+    state.voiceTrack.zvidUploadedAt = uploadedVoice.createdAt || new Date().toISOString();
     changed = true;
   }
 
   if (changed) {
     const isPoolMix = Boolean(
-      state.categoryPools &&
-        Object.values(state.categoryPools).some((p) => p && p.length > 0)
+      state.categoryPools && Object.values(state.categoryPools).some((p) => p && p.length > 0),
     );
     const shotMap = new Map<string, Shot>();
     for (const s of state.shots) {
@@ -259,8 +253,7 @@ export async function POST(req: NextRequest) {
           comp.updatedAt = new Date().toISOString();
         } catch (err) {
           comp.renderState = "failed";
-          comp.failedReason =
-            err instanceof Error ? err.message : "Submit failed";
+          comp.failedReason = err instanceof Error ? err.message : "Submit failed";
           comp.updatedAt = new Date().toISOString();
         }
       }
@@ -273,10 +266,7 @@ export async function POST(req: NextRequest) {
       const state = readProjectState();
       for (let i = 0; i < state.composedVideos.length; i++) {
         const comp = state.composedVideos[i];
-        if (
-          comp.renderState !== "queued" &&
-          comp.renderState !== "active"
-        ) {
+        if (comp.renderState !== "queued" && comp.renderState !== "active") {
           continue;
         }
         try {
@@ -310,7 +300,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Zvid API error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,5 +1,7 @@
 import fs from "node:fs";
+
 import { NextRequest, NextResponse } from "next/server";
+
 import {
   getSessionIdFromHeaders,
   readProjectState,
@@ -14,8 +16,7 @@ import {
   ShotCategory,
 } from "@/types/lachvid";
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
 
 interface PythonSceneItem {
   index: number;
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (!state.sourceVideo) {
       return NextResponse.json(
         { error: "Chưa có source video để phân tích (hoặc phiên làm việc đã hết hạn)." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,20 +84,23 @@ export async function POST(req: NextRequest) {
           state.sourceVideo.fileName,
           detector,
           threshold,
-          minSceneLen
+          minSceneLen,
         );
       }
     } else {
       return NextResponse.json(
-        { error: "Không tìm thấy file video trên hệ thống (phiên có thể đã bị dọn dẹp sau 30 phút)." },
-        { status: 404 }
+        {
+          error:
+            "Không tìm thấy file video trên hệ thống (phiên có thể đã bị dọn dẹp sau 30 phút).",
+        },
+        { status: 404 },
       );
     }
 
     if (!scenes || scenes.length === 0) {
       return NextResponse.json(
         { error: "PySceneDetect không tìm thấy phân cảnh nào." },
-        { status: 422 }
+        { status: 422 },
       );
     }
 
@@ -143,7 +147,7 @@ export async function POST(req: NextRequest) {
       currentCutIndex++;
 
       // Tiếp tục gom các nhát cắt kế tiếp cho tới khi đạt số giây tối thiểu của category
-      while (currentCutIndex < endCutIndex && (segEnd - curStart) < targetMin) {
+      while (currentCutIndex < endCutIndex && segEnd - curStart < targetMin) {
         segEnd = scenes[currentCutIndex].end_seconds;
         currentCutIndex++;
       }
@@ -158,10 +162,10 @@ export async function POST(req: NextRequest) {
         cat === "open"
           ? "Open (Hook)"
           : cat === "product"
-          ? "Product"
-          : cat === "texture"
-          ? "Texture"
-          : "Apply / Use";
+            ? "Product"
+            : cat === "texture"
+              ? "Texture"
+              : "Apply / Use";
 
       generatedShots.push({
         id: `shot_pyscene_${generatedShots.length + 1}_${Date.now()}`,
@@ -226,13 +230,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Lỗi kết nối tới PySceneDetect service",
+        error: err instanceof Error ? err.message : "Lỗi kết nối tới PySceneDetect service",
         hint: `Hãy đảm bảo Python Backend đang chạy tại ${PYTHON_BACKEND_URL} (hoặc kiểm tra log backend)`,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -242,7 +243,7 @@ async function uploadAndDetectRemote(
   fileName: string,
   detector: string,
   threshold: number,
-  minSceneLen: number
+  minSceneLen: number,
 ): Promise<PythonSceneItem[]> {
   const buffer = fs.readFileSync(filePath);
   const blob = new Blob([buffer], { type: "video/mp4" });

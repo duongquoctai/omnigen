@@ -2,6 +2,9 @@
 
 Tài liệu này ghi chú các quy chuẩn bắt buộc mà toàn bộ AI Agents / Developers phải tuân thủ nghiêm ngặt khi phát triển, chỉnh sửa và tạo mới code trong dự án **Lachvid Studio**.
 
+> [!IMPORTANT]
+> Đọc [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) để nắm rõ kiến trúc **Domain Modeling Made Functional (DMMF) + Functional Programming (FP)** và [docs/refactor/PLAN.md](docs/refactor/PLAN.md) để biết lộ trình refactor.
+
 ---
 
 ## 1. Quy tắc viết hoa tiêu đề & UI Text (Title & Header Capitalization)
@@ -10,67 +13,65 @@ Tài liệu này ghi chú các quy chuẩn bắt buộc mà toàn bộ AI Agents
 > **Tuyệt đối KHÔNG viết hoa từng chữ theo kiểu Capital Case (Title Case) trong tiếng Việt.**
 > Toàn bộ UI (tiêu đề, heading, nhãn nút, thẻ card, modal, tooltip, thông báo trạng thái) phải sử dụng **Sentence case**.
 
-### Chi tiết quy tắc:
-1. **Sentence case (Chữ cái đầu câu hoa, còn lại viết thường)**:
-   - Chỉ viết hoa chữ cái đầu tiên của cụm từ/tiêu đề hoặc chữ cái đầu tiên ngay sau dấu hai chấm `:`.
-   - Nếu có mở ngoặc giải thích ở cuối tiêu đề, chỉ viết hoa chữ cái đầu trong ngoặc nếu cần (hoặc viết thường theo ngữ cảnh), không viết hoa toàn bộ từng chữ trong ngoặc.
-   - Các từ tiếng Việt thông thường ở giữa câu/tiêu đề **bắt buộc viết thường**.
-2. **Ngoại lệ được phép giữ nguyên**:
-   - Tên thương hiệu riêng: `Zvid`, `TikTok`, `Lachvid`, `Google`, v.v.
-   - Thuật ngữ / định dạng / từ viết tắt kỹ thuật: `API`, `MP4`, `MP3`, `ZIP`, `JSON`, `FFmpeg`, `CDN`, `URL`, `ID`, v.v.
-   - Tên người / hiệu ứng mang tên riêng: `Ken Burns`.
-
-### Bảng ví dụ đối chiếu chuẩn:
-
-| ❌ Không sử dụng (Title Case) | ✅ Bắt buộc sử dụng (Sentence case) |
-| :--- | :--- |
-| `Danh Sách 6 Cảnh Cắt (Chỉnh Mốc Giây Từng 0.1s)` | `Danh sách 6 cảnh cắt (Chỉnh mốc giây từng 0.1s)` |
-| `Cài Đặt Số Giây Tối Thiểu (Min Giây) Cho 5 Category` | `Cài đặt số giây tối thiểu (min giây) cho 5 category` |
-| `Upload 1 Video Gốc Để Tách` | `Upload 1 video gốc để tách` |
-| `Thống Kê 5 Nhóm Cảnh Cắt:` | `Thống kê 5 nhóm cảnh cắt:` |
-| `Màn Hình Duyệt Cảnh (Source Video Monitor)` | `Màn hình duyệt cảnh (Source video monitor)` |
-| `Chỉnh Sửa Riêng Cho Cảnh Đang Chọn:` | `Chỉnh sửa riêng cho cảnh đang chọn:` |
-| `Kho Video Theo 5 Category (Đã Tách Từ Máy Tính)` | `Kho video theo 5 category (đã tách từ máy tính)` |
-| `Chọn Thư Mục Tổng Từ Máy (Tự Phân 5 Cột)` | `Chọn thư mục tổng từ máy (tự phân 5 cột)` |
-| `Xuất Toàn Bộ Các Cảnh Đã Tinh Chỉnh Về Máy Tính` | `Xuất toàn bộ các cảnh đã tinh chỉnh về máy tính` |
-| `Tải ZIP Toàn Bộ (5 Folder)` | `Tải ZIP toàn bộ (5 folder)` |
-| `Lưu Thẳng Vào Thư Mục Máy Tính` | `Lưu thẳng vào thư mục máy tính` |
-| `Tách Video Tiếp Theo` | `Tách video tiếp theo` |
-| `Thời Lượng & Số Lượng Output` | `Thời lượng & số lượng output` |
-| `Lồng Voice (Tùy Chọn)` | `Lồng voice (tùy chọn)` |
-| `+ Thêm Voice MP3` | `+ Thêm voice MP3` |
-| `Trộn Video (Speed Scale)` | `Trộn video (Speed scale)` |
-| `Danh Sách 8 Tổ Hợp Video` | `Danh sách 8 tổ hợp video` |
-| `Web Canvas Preview 9:16` | `Web canvas preview 9:16` |
-| `Render Hàng Loạt Qua Zvid Paid API Cloud` | `Render hàng loạt qua Zvid paid API cloud` |
-| `Kiểm Tra Hạn Mức Zvid` | `Kiểm tra hạn mức Zvid` |
-| `Validate (0 Credit)` | `Validate (0 credit)` |
-| `Render Cả Lô` / `Render Lẻ` | `Render cả lô` / `Render lẻ` |
-| `+ Thêm Shot Thủ Công` / `Thêm Clip` | `+ Thêm shot thủ công` / `Thêm clip` |
-| `Khoá Chữ (L)` | `Khoá chữ (L)` |
-| `Ken Burns Zoom` | `Ken Burns zoom` |
-| `Tạm Dừng` | `Tạm dừng` |
-| `Zvid.io Inline RenderPayload` | `Zvid.io inline renderPayload` |
-
----
-
-## 2. Phạm vi áp dụng trong Source Code
-Quy tắc trên áp dụng cho:
-- Mọi thẻ Heading JSX: `<h1>`, `<h2>`, `<h3>`, `<h4>`, `<h5>`, `<h6>`
-- Tiêu đề modal, tiêu đề section, nhãn tab workspace
-- Text trên các Button `<button>` và Link `<a>`
-- Tooltip hover qua thuộc tính `title="..."`
-- Tiêu đề nhãn input `<label>`
-- Text thông báo banner/alert (`statusBanner`, `toast`, thông báo lỗi)
-
----
-
 ## 3. Tech Stack & Cấu hình dự án Lachvid Studio
-- **Next.js**: 16.4.3 (Turbopack)
-- **React**: 19.3.1 (Hỗ trợ React automatic runtime & React Hooks rule)
-- **Font**: GeistSans (`geist/font/sans`) được cấu hình global toàn app
-- **Styling**: Tailwind CSS
-- **Linting**: ESLint 9 (Flat config `eslint.config.mjs`)
+
+- **Package manager**: `yarn` (1.22.x), Node 22 LTS (`.nvmrc`) — không dùng `npm` hay `package-lock.json`
+- **Next.js**: 16.4.3 (Turbopack, `src/proxy.ts` thay `middleware.ts`)
+- **React**: 19.3.1 (React automatic runtime & React Hooks rule)
+- **Font**: GeistSans (`geist/font/sans`) & GeistMono (`geist/font/mono`)
+- **Styling & UI**: Tailwind CSS v4 + HeroUI v3 (`@heroui/react`, `@heroui/styles`) bọc trong `src/shared/ui`
+- **Effect**: `effect` **4.x** (Workflow, DI, Schema, Data, Either, Option, Match)
+- **Forms & URL state**: `react-hook-form` + `@hookform/resolvers` (với Effect Schema), `nuqs`
+- **Linting & Formatting**: ESLint 9 (`eslint.config.mjs`) + Prettier (`prettier-plugin-tailwindcss`)
+- **Testing**: Vitest 5 (`@effect/vitest`, `fast-check`, `@testing-library/react`) + Playwright
+
+---
+
+## 4. Kiến trúc DMMF + FP (bắt buộc cho code mới)
+
+1. **Bounded contexts & phân lớp**:
+   - `src/contexts/<context>/domain/` — type + hàm thuần (Schema, Data, Option, Either, Match). **Không I/O, không Effect service, không `Date.now()` / `Math.random()` / `crypto.randomUUID()`, không `node:*` / `next/*`.**
+   - `src/contexts/<context>/workflows/` — `Effect.gen`: validate → load (qua port) → decide (domain) → persist → events. Dependency khai báo bằng `Context.Tag` (port).
+   - `src/contexts/<context>/adapters/` — `Layer` hiện thực port (SQL thô, Python, Zvid, Drive, FS), chứa Schema DTO và mapping `DTO ↔ domain` (Anti-Corruption Layer).
+   - `src/contexts/<context>/ui/` — component, hook, reducer (gọi hàm domain), server action mỏng.
+   - `src/platform/` — `runtime.ts`, `run.ts` (`runQuery`, `makeAction`, `runRoute`), `config.ts`, `sql/`, `http/`.
+   - `src/shared/` — `ui/` (wrapper HeroUI) và `lib/` thuần.
+2. **Quy tắc phụ thuộc** (đã enforce bằng `eslint-plugin-boundaries`):
+   - `domain` chỉ import `shared-kernel` và `effect`.
+   - `workflows` chỉ import `shared-kernel`, `domain` cùng context, và `effect`.
+   - Context A chỉ dùng context B qua `src/contexts/<B>/index.ts` hoặc domain events.
+3. **Ngôn ngữ chung (Ubiquitous Language)**:
+   - Đặt tên type/hàm/file theo glossary trong `docs/ARCHITECTURE.md` (ví dụ: `Project` = parent project, `Folder` = workspace studio). Không dùng tên chung chung (`data`, `item`, `info`, `manager`).
+4. **Make illegal states unrepresentable**:
+   - Dùng union theo trạng thái (`Data.TaggedEnum` / `Schema.TaggedStruct`) thay cho cờ boolean hoặc nhiều field optional.
+   - Dùng branded types (`Schema.brand`) cho ID và giá trị có ràng buộc (`Seconds`, `Speed`, `ZoomDepth`).
+   - Dùng `Option` thay `null | undefined` trong `domain/`.
+5. **Functional Programming**:
+   - Bất biến (`readonly`, `ReadonlyArray`), không `let`, không vòng lặp mutate trong `domain/`, xử lý union bắt buộc exhaustive (`Match.exhaustive` / `switch-exhaustiveness-check`).
+   - Cấm `throw` trong `domain/`, `workflows/`, `platform/` — dùng `Data.TaggedError` + `Either` / kênh lỗi `E` của Effect.
+6. **Effect Schema thay Zod**:
+   - Tuyệt đối **cấm `zod`** (đã chặn ở ESLint). Effect Schema là nguồn duy nhất cho validation và TypeScript types (`typeof MySchema.Type`). DTO và Domain là 2 schema tách biệt.
+
+---
+
+## 5. Quy tắc Next.js, UI & Testing
+
+1. **Server-first**: mặc định là React Server Component (RSC). `"use client"` chỉ đặt ở component lá có tương tác. Không `fetch("/api/...")` trong `useEffect` để load dữ liệu ban đầu.
+2. **Server Actions vs Route Handlers**:
+   - Mutation dùng Server Action mỏng bọc qua `makeAction(Schema, workflow)`.
+   - Chỉ giữ Route Handler cho: stream media/Range (`media/[...path]`, `drive-stream/[fileId]`), webhook (`webhooks/zvid`), polling (`render-progress`), upload file lớn (`upload-local`).
+3. **Form & URL state**: Form dùng `react-hook-form` + `useActionForm` với cùng Effect Schema của action. URL state (tab, filter, item đang chọn) dùng `nuqs`.
+4. **UI (100% HeroUI v3 qua `src/shared/ui`)**:
+   - Mọi component UI trong `src/contexts/*/ui/**` **bắt buộc** dùng wrapper từ `src/shared/ui` (bọc `@heroui/react` v3) và `lucide-react` cho icon.
+   - **Tuyệt đối CẤM** dùng thẻ HTML thuần cho UI controls/typography trong `src/contexts/**`: `<button>`, `<select>`, `<textarea>`, `<label>`, `<h1>`–`<h6>`, `<p>`, và `<input>` hiển thị.
+   - Ngoại lệ duy nhất: thẻ media (`<video>`, `<audio>`), `<input type="file" | "hidden">` ẩn, và track kéo-thả pointer tùy biến (`IPhoneVideoTrimmer`, thanh timeline phân đoạn).
+   - Quy tắc này được kiểm tra tự động qua ESLint `no-restricted-syntax`.
+5. **Code style**: Named export (trừ `page.tsx`, `layout.tsx`, `error.tsx`, `loading.tsx`); **mỗi component / file không được quá 600 dòng code** (bắt buộc tách nhỏ thành sub-component khi vượt ngưỡng; khuyến khích giữ ≤ 300 dòng).
+6. **Testing**: Mọi thay đổi ở `domain/`, `workflows/`, `adapters/` phải kèm unit/property/integration test và đạt ngưỡng coverage của module trong `vitest.config.mts`.
+7. **Kiểm tra bắt buộc trước khi hoàn thành task**:
+   ```bash
+   yarn lint && yarn typecheck && yarn test
+   ```
 
 <!-- BEGIN:nextjs-agent-rules -->
 

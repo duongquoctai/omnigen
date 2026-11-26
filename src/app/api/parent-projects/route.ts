@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getParentProjects, createParentProject, getDatabaseStatus } from "@/lib/db";
+
 import { getCurrentUser } from "@/lib/auth";
+import { createParentProject, getDatabaseStatus, getParentProjects } from "@/lib/db";
 
 export async function GET() {
   try {
@@ -18,10 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Vui lòng đăng nhập để tạo dự án mới." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Vui lòng đăng nhập để tạo dự án mới." }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -29,10 +27,7 @@ export async function POST(req: NextRequest) {
     const description = String(body.description || "").trim();
 
     if (!name) {
-      return NextResponse.json(
-        { error: "Tên dự án không được để trống." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Tên dự án không được để trống." }, { status: 400 });
     }
 
     const parentProject = await createParentProject(name, description, user.id);

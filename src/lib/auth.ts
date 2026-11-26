@@ -1,9 +1,11 @@
 import crypto from "node:crypto";
+
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { SessionPayload, UserSafeProfile } from "@/types/lachvid";
+
 import { getUserById } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { SessionPayload, UserSafeProfile } from "@/types/lachvid";
 
 export { hashPassword, verifyPassword };
 
@@ -22,13 +24,8 @@ export function signSessionToken(payload: Omit<SessionPayload, "exp">): string {
     ...payload,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS,
   };
-  const payloadB64 = Buffer.from(JSON.stringify(fullPayload)).toString(
-    "base64url"
-  );
-  const signature = crypto
-    .createHmac("sha256", SECRET_KEY)
-    .update(payloadB64)
-    .digest("base64url");
+  const payloadB64 = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", SECRET_KEY).update(payloadB64).digest("base64url");
   return `${payloadB64}.${signature}`;
 }
 
@@ -47,17 +44,12 @@ export function verifySessionToken(token: string): SessionPayload | null {
       .update(payloadB64)
       .digest("base64url");
 
-    if (
-      !crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-      )
-    ) {
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
       return null;
     }
 
     const payload = JSON.parse(
-      Buffer.from(payloadB64, "base64url").toString("utf8")
+      Buffer.from(payloadB64, "base64url").toString("utf8"),
     ) as SessionPayload;
 
     if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
@@ -101,9 +93,7 @@ export async function getCurrentUser(): Promise<UserSafeProfile | null> {
 /**
  * Lấy user từ NextRequest (hỗ trợ trong API route hoặc Middleware)
  */
-export function getSessionFromRequest(
-  req: NextRequest
-): SessionPayload | null {
+export function getSessionFromRequest(req: NextRequest): SessionPayload | null {
   const token =
     req.cookies.get(AUTH_COOKIE_NAME)?.value ||
     req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
@@ -114,10 +104,7 @@ export function getSessionFromRequest(
 /**
  * Gắn cookie phiên đăng nhập vào NextResponse
  */
-export function setAuthCookie(
-  res: NextResponse,
-  token: string
-): NextResponse {
+export function setAuthCookie(res: NextResponse, token: string): NextResponse {
   res.cookies.set({
     name: AUTH_COOKIE_NAME,
     value: token,

@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth";
 import {
-  getFoldersByParentId,
   createFolder,
+  getFoldersByParentId,
   getParentProjectById,
   resolveProjectAccess,
 } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -19,7 +17,7 @@ export async function GET(
     if (access.role === "none") {
       return NextResponse.json(
         { error: "Bạn không có quyền truy cập dự án này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -31,10 +29,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -43,7 +38,7 @@ export async function POST(
     if (!access.canManageFolders) {
       return NextResponse.json(
         { error: "Bạn không có quyền tạo folder trong dự án này (yêu cầu quyền Chỉnh sửa)." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

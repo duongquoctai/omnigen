@@ -13,6 +13,7 @@ const nextConfig = {
     "*.railway.app",
   ],
   experimental: {
+    agentUpgrade: "security",
     proxyClientMaxBodySize: "500mb",
     serverActions: {
       allowedOrigins: [

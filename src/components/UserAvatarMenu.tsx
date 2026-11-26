@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { FolderKanban, LogOut, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderKanban, LogOut, User as UserIcon } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+
 import { UserSafeProfile } from "@/types/lachvid";
 
 interface UserAvatarMenuProps {
@@ -105,7 +106,7 @@ export default function UserAvatarMenu({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="w-9 h-9 rounded-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/40 flex items-center justify-center text-white text-xs font-extrabold tracking-wider shadow-lg shadow-indigo-600/25 hover:scale-105 active:scale-95 transition-all focus:outline-none cursor-pointer select-none"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-indigo-400/40 bg-indigo-600 text-xs font-extrabold tracking-wider text-white shadow-lg shadow-indigo-600/25 transition-all select-none hover:scale-105 hover:bg-indigo-500 focus:outline-none active:scale-95"
         title={user ? `${user.name} (${user.email})` : "Tài khoản cá nhân"}
         aria-label="Menu tài khoản"
       >
@@ -114,31 +115,29 @@ export default function UserAvatarMenu({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="animate-in fade-in zoom-in-95 absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl duration-150">
           {/* Header thông tin người dùng */}
-          <div className="px-3 py-2.5 border-b border-slate-800/80 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 text-[11px] font-bold shrink-0">
+          <div className="flex items-center gap-2.5 border-b border-slate-800/80 px-3 py-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-600/20 text-[11px] font-bold text-indigo-300">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate">
-                {user?.name || "Người dùng"}
-              </p>
-              <p className="text-[11px] text-slate-400 font-mono truncate">
+              <p className="truncate text-xs font-bold text-white">{user?.name || "Người dùng"}</p>
+              <p className="truncate font-mono text-[11px] text-slate-400">
                 {user?.email || "Chưa xác thực"}
               </p>
             </div>
           </div>
 
-          <div className="p-1 space-y-1">
+          <div className="space-y-1 p-1">
             {/* Lối tắt quay về Danh sách dự án (nếu đang ở trang con) */}
             {showProjectsShortcut && (
               <Link
                 href="/"
                 onClick={() => setIsOpen(false)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-slate-800/80 hover:text-white"
               >
-                <FolderKanban className="w-4 h-4 text-indigo-400" />
+                <FolderKanban className="h-4 w-4 text-indigo-400" />
                 <span>Danh sách dự án</span>
               </Link>
             )}
@@ -148,9 +147,9 @@ export default function UserAvatarMenu({
               type="button"
               disabled={isLoggingOut}
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition disabled:opacity-50"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-500/10 hover:text-rose-200 disabled:opacity-50"
             >
-              <LogOut className="w-4 h-4 text-rose-400" />
+              <LogOut className="h-4 w-4 text-rose-400" />
               <span>{isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}</span>
             </button>
           </div>

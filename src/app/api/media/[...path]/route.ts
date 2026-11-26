@@ -1,16 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { NextRequest, NextResponse } from "next/server";
-import {
-  BASE_SESSIONS_DIR,
-  DATA_DIR,
-  touchSession,
-} from "@/lib/store";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
-) {
+import { NextRequest, NextResponse } from "next/server";
+
+import { BASE_SESSIONS_DIR, DATA_DIR, touchSession } from "@/lib/store";
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path: segments } = await params;
   if (!segments || segments.length === 0) {
     return NextResponse.json({ error: "Missing path" }, { status: 400 });

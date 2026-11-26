@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth";
 import {
-  getParentProjectById,
-  updateParentProject,
   deleteParentProject,
   getFoldersByParentId,
+  getParentProjectById,
   resolveProjectAccess,
+  updateParentProject,
 } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -20,7 +18,7 @@ export async function GET(
     if (access.role === "none") {
       return NextResponse.json(
         { error: "Bạn không có quyền truy cập dự án này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -37,10 +35,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -49,7 +44,7 @@ export async function PATCH(
     if (!access.isOwner) {
       return NextResponse.json(
         { error: "Chỉ chủ sở hữu mới có quyền chỉnh sửa thông tin dự án." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -74,10 +69,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -86,7 +78,7 @@ export async function DELETE(
     if (!access.isOwner) {
       return NextResponse.json(
         { error: "Chỉ chủ sở hữu mới có quyền xóa dự án này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

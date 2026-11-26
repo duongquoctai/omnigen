@@ -6,8 +6,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libgl1 \
     libglib2.0-0 \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g yarn@1.22.22 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 user
@@ -21,11 +22,11 @@ WORKDIR $HOME/app
 COPY --chown=user:user backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-COPY --chown=user:user package*.json ./
-RUN npm ci
+COPY --chown=user:user package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 COPY --chown=user:user . .
-RUN npm run build && chmod +x start.sh
+RUN yarn build && chmod +x start.sh
 
 ENV NODE_ENV=production
 

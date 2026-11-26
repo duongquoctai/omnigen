@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+
 import { NextRequest, NextResponse } from "next/server";
+
 import {
   cleanupExpiredSessions,
   clearSessionSourceVideo,
@@ -12,11 +14,7 @@ import {
   sanitizeSessionId,
   writeProjectState,
 } from "@/lib/store";
-import {
-  DEFAULT_CATEGORY_MIN_DURATIONS,
-  SourceVideo,
-  VoiceTrack,
-} from "@/types/lachvid";
+import { DEFAULT_CATEGORY_MIN_DURATIONS, SourceVideo, VoiceTrack } from "@/types/lachvid";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -45,13 +43,15 @@ export async function POST(req: NextRequest) {
       const height = Number(req.headers.get("x-video-height") || 1920);
 
       const sessionId = sanitizeSessionId(
-        req.headers.get("x-session-id") || getSessionIdFromHeaders(req.headers)
+        req.headers.get("x-session-id") || getSessionIdFromHeaders(req.headers),
       );
 
       if (fileSize > MAX_ALLOWED_FILE_SIZE) {
         return NextResponse.json(
-          { error: `File vượt quá giới hạn tối đa cho phép (${MAX_ALLOWED_FILE_SIZE / 1024 / 1024} MB).` },
-          { status: 413 }
+          {
+            error: `File vượt quá giới hạn tối đa cho phép (${MAX_ALLOWED_FILE_SIZE / 1024 / 1024} MB).`,
+          },
+          { status: 413 },
         );
       }
 
@@ -75,7 +75,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (!req.body) {
-        return NextResponse.json({ error: "Không tìm thấy dữ liệu chunk stream." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Không tìm thấy dữ liệu chunk stream." },
+          { status: 400 },
+        );
       }
 
       // Stream trực tiếp body của chunk xuống file .part bằng cờ append (Zero RAM)
@@ -167,16 +170,15 @@ export async function POST(req: NextRequest) {
     const sessionId = sanitizeSessionId(formSessionId || getSessionIdFromHeaders(req.headers));
 
     if (!file) {
-      return NextResponse.json(
-        { error: "Vui lòng đính kèm file upload." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Vui lòng đính kèm file upload." }, { status: 400 });
     }
 
     if (file.size > MAX_ALLOWED_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File vượt quá giới hạn tối đa cho phép (${MAX_ALLOWED_FILE_SIZE / 1024 / 1024} MB).` },
-        { status: 413 }
+        {
+          error: `File vượt quá giới hạn tối đa cho phép (${MAX_ALLOWED_FILE_SIZE / 1024 / 1024} MB).`,
+        },
+        { status: 413 },
       );
     }
 
@@ -246,10 +248,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       {
-        error:
-          err instanceof Error ? err.message : "Lỗi khi lưu file lên máy local",
+        error: err instanceof Error ? err.message : "Lỗi khi lưu file lên máy local",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,6 +1,8 @@
-import { Database } from "@sqlitecloud/drivers";
 import fs from "node:fs";
 import path from "node:path";
+
+import { Database } from "@sqlitecloud/drivers";
+
 import { hashPassword } from "@/lib/password";
 import {
   CategoryPools,
@@ -362,11 +364,14 @@ export async function initDatabase() {
 
         // Safely check and add columns to lachvid_parent_projects
         try {
-          const parentCols = (await client.sql`PRAGMA table_info(lachvid_parent_projects);`) as Array<{ name?: string }>;
+          const parentCols =
+            (await client.sql`PRAGMA table_info(lachvid_parent_projects);`) as Array<{
+              name?: string;
+            }>;
           const parentColNames = new Set(
             Array.isArray(parentCols)
               ? parentCols.map((c) => String(c.name || "").toLowerCase())
-              : []
+              : [],
           );
           if (!parentColNames.has("owner_id")) {
             await client.sql`ALTER TABLE lachvid_parent_projects ADD COLUMN owner_id TEXT;`;
@@ -377,11 +382,13 @@ export async function initDatabase() {
 
         // Safely check and add columns to lachvid_projects without triggering duplicate column errors
         try {
-          const projectCols = (await client.sql`PRAGMA table_info(lachvid_projects);`) as Array<{ name?: string }>;
+          const projectCols = (await client.sql`PRAGMA table_info(lachvid_projects);`) as Array<{
+            name?: string;
+          }>;
           const projectColNames = new Set(
             Array.isArray(projectCols)
               ? projectCols.map((c) => String(c.name || "").toLowerCase())
-              : []
+              : [],
           );
 
           if (!projectColNames.has("settings")) {
@@ -465,11 +472,11 @@ export async function initDatabase() {
 
         // Safely check and add columns to lachvid_category_items
         try {
-          const catCols = (await client.sql`PRAGMA table_info(lachvid_category_items);`) as Array<{ name?: string }>;
+          const catCols = (await client.sql`PRAGMA table_info(lachvid_category_items);`) as Array<{
+            name?: string;
+          }>;
           const catColNames = new Set(
-            Array.isArray(catCols)
-              ? catCols.map((c) => String(c.name || "").toLowerCase())
-              : []
+            Array.isArray(catCols) ? catCols.map((c) => String(c.name || "").toLowerCase()) : [],
           );
 
           if (!catColNames.has("content_hash")) {
@@ -508,11 +515,12 @@ export async function initDatabase() {
 
         // Safely check and add columns to lachvid_rendered_history
         try {
-          const histCols = (await client.sql`PRAGMA table_info(lachvid_rendered_history);`) as Array<{ name?: string }>;
+          const histCols =
+            (await client.sql`PRAGMA table_info(lachvid_rendered_history);`) as Array<{
+              name?: string;
+            }>;
           const histColNames = new Set(
-            Array.isArray(histCols)
-              ? histCols.map((c) => String(c.name || "").toLowerCase())
-              : []
+            Array.isArray(histCols) ? histCols.map((c) => String(c.name || "").toLowerCase()) : [],
           );
 
           if (!histColNames.has("payload")) {
@@ -531,7 +539,10 @@ export async function initDatabase() {
         dbInitialized = false;
         dbInitPromise = null;
         lastCloudError = err instanceof Error ? err.message : String(err);
-        console.warn("Lỗi khi kết nối/khởi tạo SQLite Cloud, chuyển sang dùng local fallback:", err);
+        console.warn(
+          "Lỗi khi kết nối/khởi tạo SQLite Cloud, chuyển sang dùng local fallback:",
+          err,
+        );
       }
     })();
   }
@@ -597,7 +608,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     if (!client || !dbInitialized) {
       const local = readLocalStorage();
       const user = Object.values(local.users || {}).find(
-        (u) => u.email.toLowerCase() === normalized
+        (u) => u.email.toLowerCase() === normalized,
       );
       return user || null;
     }
@@ -639,9 +650,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   }
 }
 
-export async function listUsers(
-  excludeUserId?: string
-): Promise<UserSafeProfile[]> {
+export async function listUsers(excludeUserId?: string): Promise<UserSafeProfile[]> {
   await initDatabase();
   const client = getClient();
   if (!client || !dbInitialized) {
@@ -694,9 +703,7 @@ export async function createUser(data: {
   avatarUrl?: string;
 }): Promise<User> {
   await initDatabase();
-  const id = `usr_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
+  const id = `usr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   const newUser: User = {
     id,
@@ -721,8 +728,8 @@ export async function createUser(data: {
     await client.sql`
       INSERT INTO lachvid_users (id, email, name, password_hash, avatar_url, created_at, updated_at)
       VALUES (${id}, ${newUser.email}, ${newUser.name}, ${
-      newUser.passwordHash || null
-    }, ${newUser.avatarUrl || null}, ${now}, ${now});
+        newUser.passwordHash || null
+      }, ${newUser.avatarUrl || null}, ${now}, ${now});
     `;
     await claimPendingSharesForUser(newUser.id, newUser.email);
     return newUser;
@@ -735,10 +742,7 @@ export async function createUser(data: {
 /**
  * Tự động liên kết các bản ghi chia sẻ đang chờ kích hoạt theo email khi user mới đăng ký
  */
-export async function claimPendingSharesForUser(
-  userId: string,
-  email: string
-): Promise<void> {
+export async function claimPendingSharesForUser(userId: string, email: string): Promise<void> {
   const normalized = email.trim().toLowerCase();
   const client = getClient();
   if (!client || !dbInitialized) {
@@ -769,20 +773,18 @@ export async function claimPendingSharesForUser(
 // ==========================================
 
 export async function getProjectShares(
-  projectId: string
+  projectId: string,
 ): Promise<Array<ResourceShare & { sharedUserName?: string }>> {
   await initDatabase();
   const client = getClient();
   if (!client || !dbInitialized) {
     const local = readLocalStorage();
     const list = Object.values(local.shares || {}).filter(
-      (s) => s.resourceType === "project" && s.resourceId === projectId
+      (s) => s.resourceType === "project" && s.resourceId === projectId,
     );
     return list.map((s) => ({
       ...s,
-      sharedUserName: s.sharedWithUserId
-        ? local.users?.[s.sharedWithUserId]?.name
-        : undefined,
+      sharedUserName: s.sharedWithUserId ? local.users?.[s.sharedWithUserId]?.name : undefined,
     }));
   }
   try {
@@ -835,7 +837,7 @@ export async function shareProject(
   ownerId: string,
   projectId: string,
   sharedWithEmail: string,
-  permissions: ProjectSharePermissions
+  permissions: ProjectSharePermissions,
 ): Promise<ResourceShare> {
   await initDatabase();
   const normalizedEmail = sharedWithEmail.trim().toLowerCase();
@@ -851,7 +853,7 @@ export async function shareProject(
       (s) =>
         s.resourceType === "project" &&
         s.resourceId === projectId &&
-        s.sharedWithEmail.toLowerCase() === normalizedEmail
+        s.sharedWithEmail.toLowerCase() === normalizedEmail,
     );
 
     if (existingShare) {
@@ -862,9 +864,7 @@ export async function shareProject(
       return existingShare;
     }
 
-    const id = `shr_${Date.now().toString(36)}_${Math.random()
-      .toString(36)
-      .slice(2, 6)}`;
+    const id = `shr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     const newShare: ResourceShare = {
       id,
       resourceType: "project",
@@ -893,8 +893,8 @@ export async function shareProject(
       await client.sql`
         UPDATE lachvid_resource_shares
         SET permissions = ${permsStr}, shared_with_user_id = ${
-        existingUser?.id || null
-      }, updated_at = ${now}
+          existingUser?.id || null
+        }, updated_at = ${now}
         WHERE id = ${shareId};
       `;
       return {
@@ -910,14 +910,12 @@ export async function shareProject(
       };
     }
 
-    const id = `shr_${Date.now().toString(36)}_${Math.random()
-      .toString(36)
-      .slice(2, 6)}`;
+    const id = `shr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
     await client.sql`
       INSERT INTO lachvid_resource_shares (id, resource_type, resource_id, owner_id, shared_with_email, shared_with_user_id, permissions, created_at, updated_at)
       VALUES (${id}, 'project', ${projectId}, ${ownerId}, ${normalizedEmail}, ${
-      existingUser?.id || null
-    }, ${permsStr}, ${now}, ${now});
+        existingUser?.id || null
+      }, ${permsStr}, ${now}, ${now});
     `;
 
     return {
@@ -937,10 +935,7 @@ export async function shareProject(
   }
 }
 
-export async function removeShare(
-  shareId: string,
-  ownerId: string
-): Promise<boolean> {
+export async function removeShare(shareId: string, ownerId: string): Promise<boolean> {
   await initDatabase();
   const client = getClient();
   if (!client || !dbInitialized) {
@@ -976,7 +971,7 @@ export async function removeShare(
 export async function resolveProjectAccess(
   projectId: string,
   userId?: string,
-  userEmail?: string
+  userEmail?: string,
 ): Promise<ProjectAccessInfo> {
   await initDatabase();
   const project = await getParentProjectById(projectId);
@@ -994,9 +989,7 @@ export async function resolveProjectAccess(
   }
 
   const owner = project.ownerId ? await getUserById(project.ownerId) : null;
-  const ownerInfo = owner
-    ? { id: owner.id, email: owner.email, name: owner.name }
-    : undefined;
+  const ownerInfo = owner ? { id: owner.id, email: owner.email, name: owner.name } : undefined;
 
   // Nếu user là chủ sở hữu
   if (userId && project.ownerId === userId) {
@@ -1025,8 +1018,7 @@ export async function resolveProjectAccess(
           s.resourceType === "project" &&
           s.resourceId === projectId &&
           ((userId && s.sharedWithUserId === userId) ||
-            (userEmail &&
-              s.sharedWithEmail.toLowerCase() === userEmail.toLowerCase()))
+            (userEmail && s.sharedWithEmail.toLowerCase() === userEmail.toLowerCase())),
       ) || null;
   } else {
     try {
@@ -1035,8 +1027,8 @@ export async function resolveProjectAccess(
         SELECT * FROM lachvid_resource_shares
         WHERE resource_type = 'project' AND resource_id = ${projectId}
           AND ((${userId || ""} != '' AND shared_with_user_id = ${
-        userId || ""
-      }) OR (${normalizedEmail} != '' AND LOWER(shared_with_email) = ${normalizedEmail}))
+            userId || ""
+          }) OR (${normalizedEmail} != '' AND LOWER(shared_with_email) = ${normalizedEmail}))
         LIMIT 1;
       `) as Array<{ permissions: string }>;
 
@@ -1095,7 +1087,7 @@ export async function resolveProjectAccess(
 export async function resolveFolderAccess(
   folderId: string,
   userId?: string,
-  userEmail?: string
+  userEmail?: string,
 ): Promise<ProjectAccessInfo & { folder: ProjectMeta | null }> {
   await initDatabase();
   const folder = await getProjectById(folderId);
@@ -1113,11 +1105,7 @@ export async function resolveFolderAccess(
     };
   }
 
-  const access = await resolveProjectAccess(
-    folder.parentProjectId,
-    userId,
-    userEmail
-  );
+  const access = await resolveProjectAccess(folder.parentProjectId, userId, userEmail);
   return {
     ...access,
     folder,
@@ -1126,7 +1114,7 @@ export async function resolveFolderAccess(
 
 export async function getParentProjects(
   currentUserId?: string,
-  currentUserEmail?: string
+  currentUserEmail?: string,
 ): Promise<ParentProjectMeta[]> {
   await initDatabase();
   const client = getClient();
@@ -1139,9 +1127,7 @@ export async function getParentProjects(
     // Nếu có user hiện tại, lọc các project thuộc về user hoặc được share cho user
     if (currentUserId || normalizedEmail) {
       const myIds = new Set(
-        list
-          .filter((p) => p.ownerId && p.ownerId === currentUserId)
-          .map((p) => p.id)
+        list.filter((p) => p.ownerId && p.ownerId === currentUserId).map((p) => p.id),
       );
 
       const sharedMap = new Map<string, ProjectSharePermissions>();
@@ -1149,8 +1135,7 @@ export async function getParentProjects(
         if (
           s.resourceType === "project" &&
           ((currentUserId && s.sharedWithUserId === currentUserId) ||
-            (normalizedEmail &&
-              s.sharedWithEmail.toLowerCase() === normalizedEmail))
+            (normalizedEmail && s.sharedWithEmail.toLowerCase() === normalizedEmail))
         ) {
           sharedMap.set(s.resourceId, s.permissions);
         }
@@ -1162,7 +1147,7 @@ export async function getParentProjects(
     return list
       .map((parent) => {
         const childFolders = Object.values(local.projects).filter(
-          (p) => p.parentProjectId === parent.id
+          (p) => p.parentProjectId === parent.id,
         );
         let totalClips = 0;
         let totalRendered = 0;
@@ -1186,9 +1171,7 @@ export async function getParentProjects(
           totalVoices += (local.voices?.[f.id] || []).length;
         }
 
-        const isOwner = Boolean(
-          currentUserId && parent.ownerId === currentUserId
-        );
+        const isOwner = Boolean(currentUserId && parent.ownerId === currentUserId);
         let sharePermissions: ProjectSharePermissions | undefined;
         if (!isOwner && (currentUserId || normalizedEmail)) {
           const s = Object.values(local.shares || {}).find(
@@ -1196,15 +1179,12 @@ export async function getParentProjects(
               sh.resourceType === "project" &&
               sh.resourceId === parent.id &&
               ((currentUserId && sh.sharedWithUserId === currentUserId) ||
-                (normalizedEmail &&
-                  sh.sharedWithEmail.toLowerCase() === normalizedEmail))
+                (normalizedEmail && sh.sharedWithEmail.toLowerCase() === normalizedEmail)),
           );
           if (s) sharePermissions = s.permissions;
         }
 
-        const ownerUser = parent.ownerId
-          ? local.users?.[parent.ownerId]
-          : undefined;
+        const ownerUser = parent.ownerId ? local.users?.[parent.ownerId] : undefined;
 
         return {
           ...parent,
@@ -1218,10 +1198,7 @@ export async function getParentProjects(
           ownerEmail: ownerUser?.email,
         };
       })
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   try {
@@ -1256,8 +1233,8 @@ export async function getParentProjects(
         LEFT JOIN lachvid_resource_shares s ON (
           s.resource_type = 'project' AND s.resource_id = p.id AND (
             (${currentUserId || ""} != '' AND s.shared_with_user_id = ${
-        currentUserId || ""
-      }) OR (${normalizedEmail} != '' AND LOWER(s.shared_with_email) = ${normalizedEmail})
+              currentUserId || ""
+            }) OR (${normalizedEmail} != '' AND LOWER(s.shared_with_email) = ${normalizedEmail})
           )
         )
         WHERE (p.owner_id = ${currentUserId || ""} OR (${currentUserId || ""} = ${DEFAULT_USER_ID} AND (p.owner_id IS NULL OR p.owner_id = '')) OR s.id IS NOT NULL)
@@ -1282,8 +1259,8 @@ export async function getParentProjects(
     return rows.map((r) => {
       const isOwner = Boolean(
         currentUserId &&
-          (r.owner_id === currentUserId ||
-            (currentUserId === DEFAULT_USER_ID && (!r.owner_id || r.owner_id === "")))
+        (r.owner_id === currentUserId ||
+          (currentUserId === DEFAULT_USER_ID && (!r.owner_id || r.owner_id === ""))),
       );
       let sharePermissions: ProjectSharePermissions | undefined;
       if (r.share_permissions) {
@@ -1317,9 +1294,7 @@ export async function getParentProjects(
   }
 }
 
-export async function getParentProjectById(
-  id: string
-): Promise<ParentProjectMeta | null> {
+export async function getParentProjectById(id: string): Promise<ParentProjectMeta | null> {
   await initDatabase();
   const client = getClient();
   if (!client || !dbInitialized) {
@@ -1370,12 +1345,10 @@ export async function getParentProjectById(
 export async function createParentProject(
   name: string,
   description = "",
-  ownerId?: string
+  ownerId?: string,
 ): Promise<ParentProjectMeta> {
   await initDatabase();
-  const id = `parent_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
+  const id = `parent_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   const meta: ParentProjectMeta = {
     id,
@@ -1398,9 +1371,7 @@ export async function createParentProject(
   try {
     await client.sql`
       INSERT INTO lachvid_parent_projects (id, name, description, owner_id, created_at, updated_at)
-      VALUES (${id}, ${meta.name}, ${meta.description || ""}, ${
-      ownerId || null
-    }, ${now}, ${now});
+      VALUES (${id}, ${meta.name}, ${meta.description || ""}, ${ownerId || null}, ${now}, ${now});
     `;
     return meta;
   } catch (err) {
@@ -1411,7 +1382,7 @@ export async function createParentProject(
 
 export async function updateParentProject(
   id: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string },
 ): Promise<boolean> {
   await initDatabase();
   const now = new Date().toISOString();
@@ -1435,13 +1406,9 @@ export async function updateParentProject(
     const existing = await getParentProjectById(id);
     if (!existing) return false;
     const name =
-      typeof data.name === "string" && data.name.trim()
-        ? data.name.trim()
-        : existing.name;
+      typeof data.name === "string" && data.name.trim() ? data.name.trim() : existing.name;
     const desc =
-      typeof data.description === "string"
-        ? data.description.trim()
-        : existing.description || "";
+      typeof data.description === "string" ? data.description.trim() : existing.description || "";
     await client.sql`
       UPDATE lachvid_parent_projects
       SET name = ${name}, description = ${desc}, updated_at = ${now}
@@ -1476,16 +1443,12 @@ export async function deleteParentProject(id: string): Promise<boolean> {
   }
 }
 
-export async function getFoldersByParentId(
-  parentProjectId: string
-): Promise<ProjectMeta[]> {
+export async function getFoldersByParentId(parentProjectId: string): Promise<ProjectMeta[]> {
   await initDatabase();
   const client = getClient();
   if (!client || !dbInitialized) {
     const local = readLocalStorage();
-    const list = Object.values(local.projects).filter(
-      (p) => p.parentProjectId === parentProjectId
-    );
+    const list = Object.values(local.projects).filter((p) => p.parentProjectId === parentProjectId);
     return list
       .map((p) => {
         const rendered = local.rendered[p.id] || [];
@@ -1510,10 +1473,7 @@ export async function getFoldersByParentId(
           voiceCount: voices.length,
         };
       })
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
   try {
     const rows = (await client.sql`
@@ -1555,12 +1515,10 @@ export async function getFoldersByParentId(
 export async function createFolder(
   parentProjectId: string,
   name: string,
-  description = ""
+  description = "",
 ): Promise<ProjectMeta> {
   await initDatabase();
-  const id = `fld_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
+  const id = `fld_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   const meta: ProjectMeta = {
     id,
@@ -1588,9 +1546,7 @@ export async function createFolder(
   try {
     await client.sql`
       INSERT INTO lachvid_projects (id, parent_project_id, name, description, created_at, updated_at)
-      VALUES (${id}, ${parentProjectId}, ${meta.name}, ${
-      meta.description || ""
-    }, ${now}, ${now});
+      VALUES (${id}, ${parentProjectId}, ${meta.name}, ${meta.description || ""}, ${now}, ${now});
     `;
     await client.sql`
       UPDATE lachvid_parent_projects SET updated_at = ${now} WHERE id = ${parentProjectId};
@@ -1608,19 +1564,31 @@ export async function getProjects(): Promise<ProjectMeta[]> {
   if (!client || !dbInitialized) {
     const local = readLocalStorage();
     const list = Object.values(local.projects);
-    return list.map((p) => {
-      const rendered = local.rendered[p.id] || [];
-      const pool = local.pools[p.id] || { open: [], product: [], texture: [], apply: [], end: [] };
-      const voices = local.voices?.[p.id] || [];
-      const poolCount =
-        pool.open.length + pool.product.length + pool.texture.length + pool.apply.length + pool.end.length;
-      return {
-        ...p,
-        renderedCount: rendered.length,
-        poolCount,
-        voiceCount: voices.length,
-      };
-    }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return list
+      .map((p) => {
+        const rendered = local.rendered[p.id] || [];
+        const pool = local.pools[p.id] || {
+          open: [],
+          product: [],
+          texture: [],
+          apply: [],
+          end: [],
+        };
+        const voices = local.voices?.[p.id] || [];
+        const poolCount =
+          pool.open.length +
+          pool.product.length +
+          pool.texture.length +
+          pool.apply.length +
+          pool.end.length;
+        return {
+          ...p,
+          renderedCount: rendered.length,
+          poolCount,
+          voiceCount: voices.length,
+        };
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   try {
@@ -1718,7 +1686,7 @@ export async function getProjectById(id: string): Promise<ProjectMeta | null> {
 
 export async function updateProjectSettings(
   id: string,
-  settings: Record<string, unknown>
+  settings: Record<string, unknown>,
 ): Promise<boolean> {
   await initDatabase();
   const now = new Date().toISOString();
@@ -1749,7 +1717,7 @@ export async function updateProjectSettings(
 
 export async function updateProject(
   id: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string },
 ): Promise<boolean> {
   await initDatabase();
   const now = new Date().toISOString();
@@ -1773,8 +1741,10 @@ export async function updateProject(
   try {
     const existing = await getProjectById(id);
     if (!existing) return false;
-    const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : existing.name;
-    const desc = typeof data.description === "string" ? data.description.trim() : (existing.description || "");
+    const name =
+      typeof data.name === "string" && data.name.trim() ? data.name.trim() : existing.name;
+    const desc =
+      typeof data.description === "string" ? data.description.trim() : existing.description || "";
     await client.sql`
       UPDATE lachvid_projects
       SET name = ${name}, description = ${desc}, updated_at = ${now}
@@ -1790,12 +1760,10 @@ export async function updateProject(
 export async function createProject(
   name: string,
   description = "",
-  parentProjectId?: string
+  parentProjectId?: string,
 ): Promise<ProjectMeta> {
   await initDatabase();
-  const id = `prj_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
+  const id = `prj_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
 
   let effectiveParentId = parentProjectId;
@@ -2114,7 +2082,12 @@ export async function getRenderedHistory(projectId: string): Promise<RenderedVid
 
 export async function recordRenderedVideos(
   projectId: string,
-  records: Array<{ tupleKey: string; name?: string; payload?: unknown; status?: "unused" | "used" }>
+  records: Array<{
+    tupleKey: string;
+    name?: string;
+    payload?: unknown;
+    status?: "unused" | "used";
+  }>,
 ) {
   if (!records || records.length === 0) return;
   await initDatabase();
@@ -2180,7 +2153,9 @@ export async function clearProjectRenderedHistory(projectId: string) {
   }
 }
 
-export async function getRenderedHistoryItemById(id: string): Promise<{ id: string; projectId: string; status: "unused" | "used" } | null> {
+export async function getRenderedHistoryItemById(
+  id: string,
+): Promise<{ id: string; projectId: string; status: "unused" | "used" } | null> {
   await initDatabase();
   const client = getClient();
   if (!client) {
@@ -2188,7 +2163,11 @@ export async function getRenderedHistoryItemById(id: string): Promise<{ id: stri
     for (const [pId, items] of Object.entries(local.rendered || {})) {
       const found = items?.find((r) => r.id === id);
       if (found) {
-        return { id: found.id, projectId: pId, status: found.status === "used" ? "used" : "unused" };
+        return {
+          id: found.id,
+          projectId: pId,
+          status: found.status === "used" ? "used" : "unused",
+        };
       }
     }
     return null;
@@ -2254,5 +2233,3 @@ export async function updateRenderedHistoryStatus(id: string, status: "unused" |
     console.error("Lỗi updateRenderedHistoryStatus:", err);
   }
 }
-
-

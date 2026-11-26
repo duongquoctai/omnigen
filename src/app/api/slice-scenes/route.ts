@@ -1,13 +1,10 @@
 import fs from "node:fs";
-import { NextRequest, NextResponse } from "next/server";
-import {
-  getSessionIdFromHeaders,
-  readProjectState,
-  sanitizeSessionId,
-} from "@/lib/store";
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
+import { NextRequest, NextResponse } from "next/server";
+
+import { getSessionIdFromHeaders, readProjectState, sanitizeSessionId } from "@/lib/store";
+
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +16,11 @@ export async function POST(req: NextRequest) {
     if (!videoPath || !fs.existsSync(videoPath)) {
       return NextResponse.json(
         { error: "Không tìm thấy file video nguồn để cắt cảnh (hoặc phiên làm việc đã hết hạn)." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const categoryMinDurations =
-      body.categoryMinDurations || state.categoryMinDurations || {};
+    const categoryMinDurations = body.categoryMinDurations || state.categoryMinDurations || {};
 
     const rawScenes = body.scenes || state.shots;
     const scenes = rawScenes.map((s: any) => {
@@ -43,10 +39,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!scenes || scenes.length === 0) {
-      return NextResponse.json(
-        { error: "Danh sách cảnh cắt rỗng." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Danh sách cảnh cắt rỗng." }, { status: 400 });
     }
 
     // Call Python backend
@@ -64,7 +57,7 @@ export async function POST(req: NextRequest) {
       const errText = await pyRes.text();
       return NextResponse.json(
         { error: `Python service slice error: ${errText}` },
-        { status: pyRes.status }
+        { status: pyRes.status },
       );
     }
 
@@ -84,9 +77,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      { error: `Lỗi khi xử lý tách video: ${message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Lỗi khi xử lý tách video: ${message}` }, { status: 500 });
   }
 }

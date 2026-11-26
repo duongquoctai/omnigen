@@ -1,13 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import {
-  ComposedVideo,
-  SHOT_CATEGORIES,
-  SourceVideo,
-  VoiceTrack,
-} from "@/types/lachvid";
 import { Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import { ComposedVideo, SHOT_CATEGORIES, SourceVideo, VoiceTrack } from "@/types/lachvid";
 
 // In-memory Blob URL cache for drive streams (0ms latency, zero server disk)
 const driveBlobCache = new Map<string, string>();
@@ -88,7 +84,7 @@ export default function PreviewPlayer916({
       }
       onPlayingChangeRef.current?.(nextPlaying);
     },
-    [setBufferingSync]
+    [setBufferingSync],
   );
 
   const totalDuration = Math.max(0.5, composed.finalDuration || 20);
@@ -102,14 +98,10 @@ export default function PreviewPlayer916({
     isolatedSlotIndex < composed.slots.length;
 
   const isoSlot =
-    isSlotMode && typeof isolatedSlotIndex === "number"
-      ? composed.slots[isolatedSlotIndex]
-      : null;
+    isSlotMode && typeof isolatedSlotIndex === "number" ? composed.slots[isolatedSlotIndex] : null;
 
   const currentSlot =
-    isSlotMode && isoSlot
-      ? isoSlot
-      : composed.slots[activeSlotIndex] || composed.slots[0];
+    isSlotMode && isoSlot ? isoSlot : composed.slots[activeSlotIndex] || composed.slots[0];
 
   const catMeta = SHOT_CATEGORIES.find((c) => c.id === currentSlot?.category);
 
@@ -125,11 +117,7 @@ export default function PreviewPlayer916({
       // 1. Fetch slot 0 first with highest network priority
       const slot0 = composed.slots[0];
       const url0 = slot0?.localUrl;
-      if (
-        url0 &&
-        url0.startsWith("/api/drive-stream/") &&
-        !driveBlobCache.has(url0)
-      ) {
+      if (url0 && url0.startsWith("/api/drive-stream/") && !driveBlobCache.has(url0)) {
         try {
           const res = await fetch(url0);
           if (res.ok && active) {
@@ -146,11 +134,7 @@ export default function PreviewPlayer916({
         if (!active) break;
         const slot = composed.slots[i];
         const url = slot?.localUrl;
-        if (
-          url &&
-          url.startsWith("/api/drive-stream/") &&
-          !driveBlobCache.has(url)
-        ) {
+        if (url && url.startsWith("/api/drive-stream/") && !driveBlobCache.has(url)) {
           try {
             const res = await fetch(url);
             if (res.ok && active) {
@@ -196,7 +180,7 @@ export default function PreviewPlayer916({
       }
       return raw;
     },
-    [sourceVideo?.localUrl]
+    [sourceVideo?.localUrl],
   );
 
   // Pre-seek upcoming slot into the idle background video (full mode)
@@ -208,27 +192,22 @@ export default function PreviewPlayer916({
       if (preloadedSlotIndexRef.current === nextIndex) return;
 
       const nextSlot = composed.slots[nextIndex];
-      const targetPreloadVideo =
-        nextIndex % 2 === 0 ? videoRefA.current : videoRefB.current;
+      const targetPreloadVideo = nextIndex % 2 === 0 ? videoRefA.current : videoRefB.current;
       const mediaUrl = getSlotMediaUrl(nextSlot);
       if (!targetPreloadVideo || !mediaUrl) return;
 
       targetPreloadVideo.pause();
       if (
         !targetPreloadVideo.src ||
-        (!targetPreloadVideo.src.endsWith(mediaUrl) &&
-          targetPreloadVideo.src !== mediaUrl)
+        (!targetPreloadVideo.src.endsWith(mediaUrl) && targetPreloadVideo.src !== mediaUrl)
       ) {
         targetPreloadVideo.src = mediaUrl;
       }
       targetPreloadVideo.currentTime = nextSlot.videoBegin;
-      targetPreloadVideo.playbackRate = Math.min(
-        4,
-        Math.max(0.25, nextSlot.speed || 1)
-      );
+      targetPreloadVideo.playbackRate = Math.min(4, Math.max(0.25, nextSlot.speed || 1));
       preloadedSlotIndexRef.current = nextIndex;
     },
-    [composed.slots, getSlotMediaUrl, isSlotMode]
+    [composed.slots, getSlotMediaUrl, isSlotMode],
   );
 
   // Jump to specific point in full mode
@@ -257,7 +236,7 @@ export default function PreviewPlayer916({
       const elapsed = Math.max(0, clamped - slot.enterBegin);
       const targetSourceTime = Math.min(
         slot.videoEnd,
-        slot.videoBegin + elapsed * (slot.speed || 1)
+        slot.videoBegin + elapsed * (slot.speed || 1),
       );
 
       const isA = targetIndex % 2 === 0;
@@ -270,10 +249,7 @@ export default function PreviewPlayer916({
       }
 
       if (targetVid && mediaUrl) {
-        if (
-          !targetVid.src ||
-          (!targetVid.src.endsWith(mediaUrl) && targetVid.src !== mediaUrl)
-        ) {
+        if (!targetVid.src || (!targetVid.src.endsWith(mediaUrl) && targetVid.src !== mediaUrl)) {
           targetVid.src = mediaUrl;
         }
         targetVid.currentTime = targetSourceTime;
@@ -315,7 +291,7 @@ export default function PreviewPlayer916({
       setBufferingSync,
       totalDuration,
       voiceDuration,
-    ]
+    ],
   );
 
   const handleSeekRef = useRef(handleSeekTimeline);
@@ -410,16 +386,12 @@ export default function PreviewPlayer916({
           if (
             url &&
             (!videoRefA.current.src ||
-              (!videoRefA.current.src.endsWith(url) &&
-                videoRefA.current.src !== url))
+              (!videoRefA.current.src.endsWith(url) && videoRefA.current.src !== url))
           ) {
             videoRefA.current.src = url;
           }
           videoRefA.current.currentTime = isoSlot.videoBegin;
-          videoRefA.current.playbackRate = Math.min(
-            4,
-            Math.max(0.25, isoSlot.speed || 1)
-          );
+          videoRefA.current.playbackRate = Math.min(4, Math.max(0.25, isoSlot.speed || 1));
           setBufferingSync(true);
           if (audioRef.current && enableVoice && rawVoiceUrl) {
             audioRef.current.currentTime = isoSlot.enterBegin;
@@ -429,9 +401,7 @@ export default function PreviewPlayer916({
         } else {
           // Start from 0s or resume current position if mid-timeline
           const startPos =
-            timelineSecRef.current >= totalDuration - 0.15
-              ? 0
-              : timelineSecRef.current;
+            timelineSecRef.current >= totalDuration - 0.15 ? 0 : timelineSecRef.current;
           handleSeekRef.current(startPos, true);
         }
       }, 0);
@@ -468,12 +438,7 @@ export default function PreviewPlayer916({
 
   // Scrubbing in slot mode: live seek video to scrubSourceSec
   useEffect(() => {
-    if (
-      isSlotMode &&
-      isScrubbing &&
-      typeof scrubSourceSec === "number" &&
-      !isNaN(scrubSourceSec)
-    ) {
+    if (isSlotMode && isScrubbing && typeof scrubSourceSec === "number" && !isNaN(scrubSourceSec)) {
       if (videoRefA.current) {
         videoRefA.current.pause();
         videoRefA.current.currentTime = scrubSourceSec;
@@ -485,8 +450,8 @@ export default function PreviewPlayer916({
           Math.min(
             1,
             (scrubSourceSec - isoSlot.videoBegin) /
-              Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin)
-          )
+              Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin),
+          ),
         );
         audioRef.current.currentTime =
           isoSlot.enterBegin + progress * (isoSlot.exitEnd - isoSlot.enterBegin);
@@ -500,11 +465,7 @@ export default function PreviewPlayer916({
 
   // External seekTimelineSec for full mode
   useEffect(() => {
-    if (
-      !isSlotMode &&
-      typeof seekTimelineSec === "number" &&
-      !isNaN(seekTimelineSec)
-    ) {
+    if (!isSlotMode && typeof seekTimelineSec === "number" && !isNaN(seekTimelineSec)) {
       const timer = setTimeout(() => {
         handleSeekRef.current(seekTimelineSec);
       }, 0);
@@ -528,10 +489,7 @@ export default function PreviewPlayer916({
       const vidA = videoRefA.current;
       const mediaUrl = getSlotMediaUrl(isoSlot);
       if (vidA && mediaUrl) {
-        if (
-          !vidA.src ||
-          (!vidA.src.endsWith(mediaUrl) && vidA.src !== mediaUrl)
-        ) {
+        if (!vidA.src || (!vidA.src.endsWith(mediaUrl) && vidA.src !== mediaUrl)) {
           vidA.src = mediaUrl;
         }
         vidA.playbackRate = Math.min(4, Math.max(0.25, isoSlot.speed || 1));
@@ -556,9 +514,8 @@ export default function PreviewPlayer916({
           0,
           Math.min(
             1,
-            (curTime - isoSlot.videoBegin) /
-              Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin)
-          )
+            (curTime - isoSlot.videoBegin) / Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin),
+          ),
         );
         audioEl.currentTime =
           isoSlot.enterBegin + progress * (isoSlot.exitEnd - isoSlot.enterBegin);
@@ -592,12 +549,11 @@ export default function PreviewPlayer916({
               Math.min(
                 1,
                 (curTime - isoSlot.videoBegin) /
-                  Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin)
-              )
+                  Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin),
+              ),
             );
             const targetAudio =
-              isoSlot.enterBegin +
-              progress * (isoSlot.exitEnd - isoSlot.enterBegin);
+              isoSlot.enterBegin + progress * (isoSlot.exitEnd - isoSlot.enterBegin);
             if (audioEl.paused) {
               audioEl.play().catch(() => {});
             }
@@ -606,10 +562,7 @@ export default function PreviewPlayer916({
             }
           }
 
-          if (
-            curTime >= isoSlot.videoEnd - 0.05 ||
-            curTime < isoSlot.videoBegin - 0.05
-          ) {
+          if (curTime >= isoSlot.videoEnd - 0.05 || curTime < isoSlot.videoBegin - 0.05) {
             vidA.currentTime = isoSlot.videoBegin;
             if (audioEl && enableVoice && rawVoiceUrl) {
               audioEl.currentTime = isoSlot.enterBegin;
@@ -634,8 +587,7 @@ export default function PreviewPlayer916({
       const mediaUrl = getSlotMediaUrl(slot);
       if (
         mediaUrl &&
-        (!currentVid.src ||
-          (!currentVid.src.endsWith(mediaUrl) && currentVid.src !== mediaUrl))
+        (!currentVid.src || (!currentVid.src.endsWith(mediaUrl) && currentVid.src !== mediaUrl))
       ) {
         currentVid.src = mediaUrl;
       }
@@ -663,25 +615,17 @@ export default function PreviewPlayer916({
       if (!isPlayingRef.current) return;
 
       const activeIdx = activeSlotIndexRef.current;
-      const activeVid =
-        activeIdx % 2 === 0 ? videoRefA.current : videoRefB.current;
+      const activeVid = activeIdx % 2 === 0 ? videoRefA.current : videoRefB.current;
       const audioEl = audioRef.current;
 
       const isVoiceActive = enableVoice && Boolean(rawVoiceUrl) && !isSlotMode;
-      const audioDur = isVoiceActive
-        ? (voiceDuration || audioEl?.duration || totalDuration)
-        : 0;
-      const isVoiceNeededNow =
-        isVoiceActive && timelineSecRef.current < audioDur;
+      const audioDur = isVoiceActive ? voiceDuration || audioEl?.duration || totalDuration : 0;
+      const isVoiceNeededNow = isVoiceActive && timelineSecRef.current < audioDur;
 
       // Dual Sync Gate: Check BOTH active video and audio readiness
-      const isVidBuffering = Boolean(
-        activeVid && (activeVid.seeking || activeVid.readyState < 2)
-      );
+      const isVidBuffering = Boolean(activeVid && (activeVid.seeking || activeVid.readyState < 2));
       const isAudioBuffering = Boolean(
-        isVoiceNeededNow &&
-        audioEl &&
-        (audioEl.seeking || audioEl.readyState < 2)
+        isVoiceNeededNow && audioEl && (audioEl.seeking || audioEl.readyState < 2),
       );
 
       if (isVidBuffering || isAudioBuffering) {
@@ -727,16 +671,12 @@ export default function PreviewPlayer916({
           if (
             url0 &&
             (!videoRefA.current.src ||
-              (!videoRefA.current.src.endsWith(url0) &&
-                videoRefA.current.src !== url0))
+              (!videoRefA.current.src.endsWith(url0) && videoRefA.current.src !== url0))
           ) {
             videoRefA.current.src = url0;
           }
           videoRefA.current.currentTime = slot0.videoBegin;
-          videoRefA.current.playbackRate = Math.min(
-            4,
-            Math.max(0.25, slot0.speed || 1)
-          );
+          videoRefA.current.playbackRate = Math.min(4, Math.max(0.25, slot0.speed || 1));
         }
         if (videoRefB.current) {
           videoRefB.current.pause();
@@ -746,16 +686,12 @@ export default function PreviewPlayer916({
             if (
               url1 &&
               (!videoRefB.current.src ||
-                (!videoRefB.current.src.endsWith(url1) &&
-                  videoRefB.current.src !== url1))
+                (!videoRefB.current.src.endsWith(url1) && videoRefB.current.src !== url1))
             ) {
               videoRefB.current.src = url1;
             }
             videoRefB.current.currentTime = slot1.videoBegin;
-            videoRefB.current.playbackRate = Math.min(
-              4,
-              Math.max(0.25, slot1.speed || 1)
-            );
+            videoRefB.current.playbackRate = Math.min(4, Math.max(0.25, slot1.speed || 1));
             preloadedSlotIndexRef.current = 1;
           }
         }
@@ -793,15 +729,11 @@ export default function PreviewPlayer916({
           if (
             mediaUrl &&
             (!nowActiveVid.src ||
-              (!nowActiveVid.src.endsWith(mediaUrl) &&
-                nowActiveVid.src !== mediaUrl))
+              (!nowActiveVid.src.endsWith(mediaUrl) && nowActiveVid.src !== mediaUrl))
           ) {
             nowActiveVid.src = mediaUrl;
           }
-          nowActiveVid.playbackRate = Math.min(
-            4,
-            Math.max(0.25, newSlot.speed || 1)
-          );
+          nowActiveVid.playbackRate = Math.min(4, Math.max(0.25, newSlot.speed || 1));
         }
         if (nowIdleVid) {
           nowIdleVid.pause();
@@ -848,19 +780,13 @@ export default function PreviewPlayer916({
       const bar = progressBarRef.current;
       if (!bar) return 0;
       const rect = bar.getBoundingClientRect();
-      const ratio = Math.max(
-        0,
-        Math.min(1, (clientX - rect.left) / Math.max(1, rect.width))
-      );
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
       if (isSlotMode && isoSlot) {
-        return (
-          isoSlot.videoBegin +
-          ratio * Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin)
-        );
+        return isoSlot.videoBegin + ratio * Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin);
       }
       return ratio * totalDuration;
     },
-    [isSlotMode, isoSlot, totalDuration]
+    [isSlotMode, isoSlot, totalDuration],
   );
 
   const applyBarSeek = useCallback(
@@ -876,9 +802,8 @@ export default function PreviewPlayer916({
             0,
             Math.min(
               1,
-              (sec - isoSlot.videoBegin) /
-                Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin)
-            )
+              (sec - isoSlot.videoBegin) / Math.max(0.001, isoSlot.videoEnd - isoSlot.videoBegin),
+            ),
           );
           audioRef.current.currentTime =
             isoSlot.enterBegin + progress * (isoSlot.exitEnd - isoSlot.enterBegin);
@@ -887,20 +812,14 @@ export default function PreviewPlayer916({
         handleSeekTimeline(sec);
       }
     },
-    [computeSecFromPointer, enableVoice, handleSeekTimeline, isSlotMode, isoSlot, rawVoiceUrl]
+    [computeSecFromPointer, enableVoice, handleSeekTimeline, isSlotMode, isoSlot, rawVoiceUrl],
   );
 
   // Compute live CSS transform & filter for the active or isolated slot
   const slotDuration =
     isSlotMode && isoSlot
-      ? Math.max(
-          0.2,
-          (isoSlot.videoEnd - isoSlot.videoBegin) / (isoSlot.speed || 1)
-        )
-      : Math.max(
-          0.2,
-          (currentSlot?.exitEnd || 1) - (currentSlot?.enterBegin || 0)
-        );
+      ? Math.max(0.2, (isoSlot.videoEnd - isoSlot.videoBegin) / (isoSlot.speed || 1))
+      : Math.max(0.2, (currentSlot?.exitEnd || 1) - (currentSlot?.enterBegin || 0));
 
   const slotProgress =
     isSlotMode && isoSlot
@@ -909,23 +828,15 @@ export default function PreviewPlayer916({
           Math.max(
             0,
             (slotCurrentSec - isoSlot.videoBegin) /
-              Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin)
-          )
+              Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin),
+          ),
         )
-      : Math.min(
-          1,
-          Math.max(
-            0,
-            (timelineSec - (currentSlot?.enterBegin || 0)) / slotDuration
-          )
-        );
+      : Math.min(1, Math.max(0, (timelineSec - (currentSlot?.enterBegin || 0)) / slotDuration));
 
   let zoomScale = 1;
   if (currentSlot?.zoom) {
     const targetDepth =
-      typeof currentSlot.zoom === "object" && currentSlot.zoom.depth
-        ? currentSlot.zoom.depth
-        : 1.2;
+      typeof currentSlot.zoom === "object" && currentSlot.zoom.depth ? currentSlot.zoom.depth : 1.2;
     zoomScale = 1 + (targetDepth - 1) * slotProgress;
   }
 
@@ -935,7 +846,7 @@ export default function PreviewPlayer916({
   const contrast = 1 + (f?.contrast || 0) / 100;
   const saturate = 1 + (f?.saturate || 0) / 100;
   const cssFilter = `brightness(${brightness.toFixed(
-    2
+    2,
   )}) contrast(${contrast.toFixed(2)}) saturate(${saturate.toFixed(2)})`;
 
   // Progress percentage for YouTube-style bar
@@ -947,8 +858,8 @@ export default function PreviewPlayer916({
             100,
             ((slotCurrentSec - isoSlot.videoBegin) /
               Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin)) *
-              100
-          )
+              100,
+          ),
         )
       : Math.max(0, Math.min(100, (timelineSec / totalDuration) * 100));
 
@@ -956,49 +867,42 @@ export default function PreviewPlayer916({
   const hoverSlotLabel = (() => {
     if (hoverSec === null) return null;
     if (isSlotMode && isoSlot) {
-      const rel = Math.max(
-        0,
-        (hoverSec - isoSlot.videoBegin) / (isoSlot.speed || 1)
-      );
+      const rel = Math.max(0, (hoverSec - isoSlot.videoBegin) / (isoSlot.speed || 1));
       return `${rel.toFixed(1)}s • ${isoSlot.category.toUpperCase()}`;
     }
     const found =
-      composed.slots.find(
-        (s) => hoverSec >= s.enterBegin && hoverSec <= s.exitEnd + 0.05
-      ) || composed.slots[0];
-    return `${hoverSec.toFixed(1)}s${
-      found ? ` • ${found.category.toUpperCase()}` : ""
-    }`;
+      composed.slots.find((s) => hoverSec >= s.enterBegin && hoverSec <= s.exitEnd + 0.05) ||
+      composed.slots[0];
+    return `${hoverSec.toFixed(1)}s${found ? ` • ${found.category.toUpperCase()}` : ""}`;
   })();
 
   const hoverPct =
     hoverSec === null
       ? 0
       : isSlotMode && isoSlot
-      ? Math.max(
-          8,
-          Math.min(
-            92,
-            ((hoverSec - isoSlot.videoBegin) /
-              Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin)) *
-              100
+        ? Math.max(
+            8,
+            Math.min(
+              92,
+              ((hoverSec - isoSlot.videoBegin) /
+                Math.max(0.1, isoSlot.videoEnd - isoSlot.videoBegin)) *
+                100,
+            ),
           )
-        )
-      : Math.max(8, Math.min(92, (hoverSec / totalDuration) * 100));
+        : Math.max(8, Math.min(92, (hoverSec / totalDuration) * 100));
 
   return (
     <div className="flex flex-col items-center">
       {/* 9:16 Vertical Phone Frame */}
-      <div className="relative w-[270px] h-[480px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 shadow-2xl flex flex-col justify-between">
+      <div className="relative flex h-[480px] w-[270px] flex-col justify-between overflow-hidden rounded-2xl border-2 border-slate-800 bg-slate-950 shadow-2xl">
         {/* Top Overlay: Active Category / Mode & Transform Badges */}
-        <div className="relative z-20 p-3 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/30 to-transparent">
+        <div className="relative z-20 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/30 to-transparent p-3">
           {isSlotMode && isoSlot ? (
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
               <span
-                className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shadow-sm ${
-                  catMeta?.badgeClass ||
-                  "bg-rose-500/30 text-rose-200 border-rose-500/50"
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold shadow-sm ${
+                  catMeta?.badgeClass || "border-rose-500/50 bg-rose-500/30 text-rose-200"
                 }`}
               >
                 Cảnh {isoSlot.category.toUpperCase()} (Xem riêng)
@@ -1007,24 +911,23 @@ export default function PreviewPlayer916({
           ) : (
             <div className="flex items-center gap-1.5">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  isPlaying ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
+                className={`h-2 w-2 rounded-full ${
+                  isPlaying ? "animate-pulse bg-emerald-400" : "bg-slate-400"
                 }`}
               />
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                Cảnh {currentSlot?.category.toUpperCase()} (
-                {activeSlotIndex + 1}/5)
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">
+                Cảnh {currentSlot?.category.toUpperCase()} ({activeSlotIndex + 1}/5)
               </span>
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 text-[10px] font-mono">
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
             {currentSlot?.flipH && (
-              <span className="px-1.5 py-0.5 rounded bg-fuchsia-500/30 text-fuchsia-200 border border-fuchsia-500/40">
+              <span className="rounded border border-fuchsia-500/40 bg-fuchsia-500/30 px-1.5 py-0.5 text-fuchsia-200">
                 MIRROR
               </span>
             )}
-            <span className="px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300">
+            <span className="rounded bg-slate-800/90 px-1.5 py-0.5 text-slate-300">
               {currentSlot?.speed}x
             </span>
           </div>
@@ -1041,14 +944,12 @@ export default function PreviewPlayer916({
                 setBufferingSync(true);
               } else {
                 const startPos =
-                  timelineSecRef.current >= totalDuration - 0.15
-                    ? 0
-                    : timelineSecRef.current;
+                  timelineSecRef.current >= totalDuration - 0.15 ? 0 : timelineSecRef.current;
                 handleSeekTimeline(startPos, true);
               }
             }
           }}
-          className="absolute inset-0 overflow-hidden flex items-center justify-center bg-black cursor-pointer"
+          className="absolute inset-0 flex cursor-pointer items-center justify-center overflow-hidden bg-black"
         >
           {sourceVideo?.localUrl || composed.slots.some((s) => s.localUrl) ? (
             <>
@@ -1058,10 +959,8 @@ export default function PreviewPlayer916({
                 muted
                 playsInline
                 preload="auto"
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-100 ${
-                  isVideoAActive
-                    ? "opacity-100 z-10"
-                    : "opacity-0 z-0 pointer-events-none"
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-100 ${
+                  isVideoAActive ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0"
                 }`}
                 style={{
                   transform: isVideoAActive
@@ -1078,10 +977,8 @@ export default function PreviewPlayer916({
                   muted
                   playsInline
                   preload="auto"
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-100 ${
-                    !isVideoAActive
-                      ? "opacity-100 z-10"
-                      : "opacity-0 z-0 pointer-events-none"
+                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-100 ${
+                    !isVideoAActive ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0"
                   }`}
                   style={{
                     transform: !isVideoAActive
@@ -1094,7 +991,7 @@ export default function PreviewPlayer916({
             </>
           ) : (
             <div
-              className="w-full h-full flex flex-col items-center justify-center p-5 text-center transition-all duration-150"
+              className="flex h-full w-full flex-col items-center justify-center p-5 text-center transition-all duration-150"
               style={{
                 transform: `scaleX(${flipScaleX * zoomScale}) scaleY(${zoomScale})`,
                 filter: cssFilter,
@@ -1102,26 +999,23 @@ export default function PreviewPlayer916({
                   "radial-gradient(circle at 50% 35%, rgba(244,63,94,0.22), rgba(15,23,42,0.95))",
               }}
             >
-              <div className="text-xs uppercase tracking-widest text-slate-400 mb-2">
+              <div className="mb-2 text-xs tracking-widest text-slate-400 uppercase">
                 Simulated 9:16
               </div>
-              <div className="text-sm font-bold text-white mb-1 px-2">
-                {currentSlot?.shotLabel}
-              </div>
-              <div className="text-xs text-slate-400 font-mono">
-                Source: {currentSlot?.videoBegin.toFixed(1)}s →{" "}
-                {currentSlot?.videoEnd.toFixed(1)}s
+              <div className="mb-1 px-2 text-sm font-bold text-white">{currentSlot?.shotLabel}</div>
+              <div className="font-mono text-xs text-slate-400">
+                Source: {currentSlot?.videoBegin.toFixed(1)}s → {currentSlot?.videoEnd.toFixed(1)}s
               </div>
             </div>
           )}
 
           {/* YouTube-Style Buffering Spinner Overlay */}
           {isBuffering && isPlaying && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px] transition-opacity pointer-events-none animate-in fade-in duration-150">
+            <div className="animate-in fade-in pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px] transition-opacity duration-150">
               <div className="relative flex items-center justify-center">
-                <div className="w-11 h-11 rounded-full border-[3px] border-white/20 border-t-red-500 animate-spin shadow-lg" />
+                <div className="h-11 w-11 animate-spin rounded-full border-[3px] border-white/20 border-t-red-500 shadow-lg" />
               </div>
-              <span className="text-[11px] font-medium text-white/90 mt-2.5 drop-shadow tracking-wide">
+              <span className="mt-2.5 text-[11px] font-medium tracking-wide text-white/90 drop-shadow">
                 Đang tải video...
               </span>
             </div>
@@ -1129,30 +1023,24 @@ export default function PreviewPlayer916({
         </div>
 
         {/* Always-mounted Audio Element for Voice Preview so it never loses buffer */}
-        <audio
-          ref={audioRef}
-          preload="auto"
-          muted={mutedVoice || !enableVoice}
-        />
+        <audio ref={audioRef} preload="auto" muted={mutedVoice || !enableVoice} />
 
         {/* Bottom Overlay with YouTube-style Scrubber Bar */}
-        <div className="relative z-20 p-3 bg-gradient-to-t from-black/95 via-black/70 to-transparent space-y-1.5">
+        <div className="relative z-20 space-y-1.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-3">
           {/* Active Clip Title & Range */}
           {isSlotMode && isoSlot ? (
             <div className="flex items-center justify-between text-[11px] text-slate-200">
-              <span className="font-medium truncate max-w-[160px] text-rose-300">
+              <span className="max-w-[160px] truncate font-medium text-rose-300">
                 {isoSlot.shotLabel}
               </span>
-              <span className="font-mono text-[10px] text-amber-300 font-bold">
+              <span className="font-mono text-[10px] font-bold text-amber-300">
                 Cắt: {isoSlot.videoBegin.toFixed(1)}s–
                 {isoSlot.videoEnd.toFixed(1)}s
               </span>
             </div>
           ) : (
             <div className="flex items-center justify-between text-[11px] text-slate-200">
-              <span className="font-medium truncate max-w-[170px]">
-                {currentSlot?.shotLabel}
-              </span>
+              <span className="max-w-[170px] truncate font-medium">{currentSlot?.shotLabel}</span>
               <span className="font-mono text-[10px] text-slate-400">
                 {currentSlot?.videoBegin.toFixed(1)}s–
                 {currentSlot?.videoEnd.toFixed(1)}s
@@ -1186,38 +1074,32 @@ export default function PreviewPlayer916({
               setIsDraggingBar(false);
               setHoverSec(null);
             }}
-            className="relative w-full py-2 cursor-pointer group/bar select-none touch-none"
+            className="group/bar relative w-full cursor-pointer touch-none py-2 select-none"
           >
             {/* Floating Hover Time + Chapter Tooltip */}
             {hoverSlotLabel && (
               <div
                 style={{ left: `${hoverPct}%` }}
-                className="
-                  absolute -top-6 -translate-x-1/2 pointer-events-none
-                  px-1.5 py-0.5 rounded bg-slate-900/95 border border-slate-700
-                  text-[9px] font-mono font-bold text-white whitespace-nowrap shadow-lg
-                "
+                className="pointer-events-none absolute -top-6 -translate-x-1/2 rounded border border-slate-700 bg-slate-900/95 px-1.5 py-0.5 font-mono text-[9px] font-bold whitespace-nowrap text-white shadow-lg"
               >
                 {hoverSlotLabel}
               </div>
             )}
 
             {/* Track Background */}
-            <div className="relative w-full h-1.5 group-hover/bar:h-2.5 bg-white/25 rounded-full transition-all duration-150 overflow-visible">
+            <div className="relative h-1.5 w-full overflow-visible rounded-full bg-white/25 transition-all duration-150 group-hover/bar:h-2.5">
               {/* Hover Preview Ghost Fill */}
               {hoverSec !== null && (
                 <div
-                  className="absolute inset-y-0 left-0 bg-white/30 rounded-full pointer-events-none"
+                  className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-white/30"
                   style={{ width: `${hoverPct}%` }}
                 />
               )}
 
               {/* Active Red YouTube Progress Fill */}
               <div
-                className={`absolute inset-y-0 left-0 rounded-full pointer-events-none ${
-                  isSlotMode
-                    ? "bg-amber-400"
-                    : "bg-gradient-to-r from-rose-500 to-red-500"
+                className={`pointer-events-none absolute inset-y-0 left-0 rounded-full ${
+                  isSlotMode ? "bg-amber-400" : "bg-gradient-to-r from-rose-500 to-red-500"
                 }`}
                 style={{ width: `${progressPct}%` }}
               />
@@ -1227,13 +1109,13 @@ export default function PreviewPlayer916({
                 composed.slots.slice(1).map((slot, idx) => {
                   const tickPct = Math.max(
                     0,
-                    Math.min(100, (slot.enterBegin / totalDuration) * 100)
+                    Math.min(100, (slot.enterBegin / totalDuration) * 100),
                   );
                   return (
                     <div
                       key={`tick_${slot.category}_${idx}`}
                       style={{ left: `${tickPct}%` }}
-                      className="absolute inset-y-0 w-[2px] -translate-x-1/2 bg-slate-950/90 z-10 pointer-events-none"
+                      className="pointer-events-none absolute inset-y-0 z-10 w-[2px] -translate-x-1/2 bg-slate-950/90"
                     />
                   );
                 })}
@@ -1241,17 +1123,9 @@ export default function PreviewPlayer916({
               {/* YouTube Scrubber Thumb Dot */}
               <div
                 style={{ left: `${progressPct}%` }}
-                className={`
-                  absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-20
-                  w-3.5 h-3.5 rounded-full ring-2 ring-white shadow-md
-                  transition-transform duration-100 pointer-events-none
-                  ${isSlotMode ? "bg-amber-400" : "bg-red-500"}
-                  ${
-                    isDraggingBar
-                      ? "scale-125"
-                      : "scale-90 group-hover/bar:scale-110"
-                  }
-                `}
+                className={`pointer-events-none absolute top-1/2 z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-md ring-2 ring-white transition-transform duration-100 ${isSlotMode ? "bg-amber-400" : "bg-red-500"} ${
+                  isDraggingBar ? "scale-125" : "scale-90 group-hover/bar:scale-110"
+                } `}
               />
             </div>
           </div>
@@ -1270,21 +1144,15 @@ export default function PreviewPlayer916({
                       setBufferingSync(true);
                     } else {
                       const startPos =
-                        timelineSecRef.current >= totalDuration - 0.15
-                          ? 0
-                          : timelineSecRef.current;
+                        timelineSecRef.current >= totalDuration - 0.15 ? 0 : timelineSecRef.current;
                       handleSeekTimeline(startPos, true);
                     }
                   }
                 }}
-                className="p-1.5 rounded-lg bg-white text-slate-950 hover:bg-rose-100 transition shadow"
+                className="rounded-lg bg-white p-1.5 text-slate-950 shadow transition hover:bg-rose-100"
                 title={isPlaying ? "Tạm dừng" : "Phát"}
               >
-                {isPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </button>
 
               <button
@@ -1300,23 +1168,23 @@ export default function PreviewPlayer916({
                     handleSeekTimeline(0, true);
                   }
                 }}
-                className="p-1.5 rounded-lg bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition"
+                className="rounded-lg bg-slate-800/80 p-1.5 text-slate-200 transition hover:bg-slate-700"
                 title="Phát lại từ đầu"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="h-3.5 w-3.5" />
               </button>
 
               {!isSlotMode && enableVoice && voiceTrack && (
                 <button
                   type="button"
                   onClick={() => setMutedVoice((m) => !m)}
-                  className="p-1.5 rounded-lg bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition"
+                  className="rounded-lg bg-slate-800/80 p-1.5 text-slate-200 transition hover:bg-slate-700"
                   title="Bật/tắt tiếng voice"
                 >
                   {mutedVoice ? (
-                    <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                    <VolumeX className="h-3.5 w-3.5 text-rose-400" />
                   ) : (
-                    <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
                   )}
                 </button>
               )}
@@ -1324,20 +1192,14 @@ export default function PreviewPlayer916({
 
             {/* Time Indicator */}
             {isSlotMode && isoSlot ? (
-              <div className="text-[11px] font-mono text-amber-300 font-bold">
-                {Math.max(
-                  0,
-                  (slotCurrentSec - isoSlot.videoBegin) / (isoSlot.speed || 1)
-                ).toFixed(1)}
-                s /{" "}
-                {(
-                  (isoSlot.videoEnd - isoSlot.videoBegin) /
-                  (isoSlot.speed || 1)
-                ).toFixed(1)}
-                s
+              <div className="font-mono text-[11px] font-bold text-amber-300">
+                {Math.max(0, (slotCurrentSec - isoSlot.videoBegin) / (isoSlot.speed || 1)).toFixed(
+                  1,
+                )}
+                s / {((isoSlot.videoEnd - isoSlot.videoBegin) / (isoSlot.speed || 1)).toFixed(1)}s
               </div>
             ) : (
-              <div className="text-[11px] font-mono text-slate-300">
+              <div className="font-mono text-[11px] text-slate-300">
                 {timelineSec.toFixed(1)}s / {totalDuration.toFixed(1)}s
               </div>
             )}

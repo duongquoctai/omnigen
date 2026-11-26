@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth";
 import {
+  clearProjectRenderedHistory,
   createProject,
   deleteProject,
+  deleteRenderedHistoryItem,
   getProjectById,
   getProjectCategoryPools,
-  getProjectVoiceTracks,
   getProjects,
+  getProjectVoiceTracks,
   getRenderedHistory,
   getRenderedHistoryItemById,
   recordRenderedVideos,
-  clearProjectRenderedHistory,
-  deleteRenderedHistoryItem,
   resolveFolderAccess,
   updateRenderedHistoryStatus,
 } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 import {
   clearSessionCategories,
   clearSessionSourceVideo,
@@ -96,7 +97,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Thiếu dữ liệu ghi nhận render" }, { status: 400 });
       }
       await recordRenderedVideos(projectId, records);
-      return NextResponse.json({ success: true, count: records.length, addedCount: records.length });
+      return NextResponse.json({
+        success: true,
+        count: records.length,
+        addedCount: records.length,
+      });
     }
 
     if (action === "clear_history") {
@@ -109,7 +114,7 @@ export async function POST(req: NextRequest) {
       if (!access.isOwner && !access.permissions.history?.actions?.includes("edit")) {
         return NextResponse.json(
           { error: "Bạn không có quyền xóa toàn bộ lịch sử render." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       await clearProjectRenderedHistory(projectId);
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
       if (!access.isOwner && !access.permissions.history?.actions?.includes("edit")) {
         return NextResponse.json(
           { error: "Bạn không có quyền xóa bản ghi lịch sử render." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       await deleteRenderedHistoryItem(id);
@@ -152,7 +157,7 @@ export async function POST(req: NextRequest) {
       if (!access.isOwner && !access.permissions.history?.actions?.includes("edit")) {
         return NextResponse.json(
           { error: "Bạn không có quyền chỉnh sửa trạng thái lịch sử render." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       await updateRenderedHistoryStatus(id, status);
@@ -167,7 +172,7 @@ export async function POST(req: NextRequest) {
         if (!access.isOwner && !access.permissions.split?.actions?.includes("edit")) {
           return NextResponse.json(
             { error: "Bạn không có quyền thay đổi video gốc của dự án." },
-            { status: 403 }
+            { status: 403 },
           );
         }
       }
@@ -188,7 +193,7 @@ export async function POST(req: NextRequest) {
         if (!access.isOwner && !access.permissions.mix?.actions?.includes("edit")) {
           return NextResponse.json(
             { error: "Bạn không có quyền xóa toàn bộ kho video của dự án." },
-            { status: 403 }
+            { status: 403 },
           );
         }
       }

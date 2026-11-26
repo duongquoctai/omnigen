@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getRenderedHistory } from "@/lib/db";
+import { buildComposedVideo, CATEGORY_ORDER, planDiverseCombinations } from "@/lib/planner";
 import {
   getSessionIdFromHeaders,
   readProjectState,
   sanitizeSessionId,
   writeProjectState,
 } from "@/lib/store";
-import {
-  CATEGORY_ORDER,
-  buildComposedVideo,
-  planDiverseCombinations,
-} from "@/lib/planner";
 import {
   AudioVideoSyncMode,
   CategoryPools,
@@ -19,23 +17,24 @@ import {
   Shot,
   VoiceTrack,
 } from "@/types/lachvid";
-import { getRenderedHistory } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const sessionId = sanitizeSessionId(body.sessionId || getSessionIdFromHeaders(req.headers));
     const projectId = (body.projectId as string) || "";
-    const clipNamePrefix = typeof body.clipNamePrefix === "string" ? body.clipNamePrefix.trim() : undefined;
+    const clipNamePrefix =
+      typeof body.clipNamePrefix === "string" ? body.clipNamePrefix.trim() : undefined;
     const state = readProjectState(sessionId);
 
-    const pools: CategoryPools = body.categoryPools || state.categoryPools || {
-      open: [],
-      product: [],
-      texture: [],
-      apply: [],
-      end: [],
-    };
+    const pools: CategoryPools = body.categoryPools ||
+      state.categoryPools || {
+        open: [],
+        product: [],
+        texture: [],
+        apply: [],
+        end: [],
+      };
 
     // Build Shot[] pool from CategoryPools
     const poolShots: Shot[] = [];
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest) {
     if (shotsToUse.length === 0) {
       return NextResponse.json(
         { error: "Chưa có video trong 5 Category để tạo tổ hợp trộn." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -87,25 +86,21 @@ export async function POST(req: NextRequest) {
       targetOutputDuration: Number(
         body.diversityConfig?.targetOutputDuration ||
           state.diversityConfig.targetOutputDuration ||
-          20
+          20,
       ),
       targetCount: Math.min(
         50,
         Math.max(
           1,
-          Number(
-            body.diversityConfig?.targetCount ||
-              state.diversityConfig.targetCount ||
-              3
-          )
-        )
+          Number(body.diversityConfig?.targetCount || state.diversityConfig.targetCount || 3),
+        ),
       ),
       enableAutoVariantEdits:
         isCategoryPool || preserveOriginalClips
           ? false
           : Boolean(
               body.diversityConfig?.enableAutoVariantEdits ??
-                state.diversityConfig.enableAutoVariantEdits
+              state.diversityConfig.enableAutoVariantEdits,
             ),
       randomTransitionDuration:
         isCategoryPool || preserveOriginalClips
@@ -113,7 +108,7 @@ export async function POST(req: NextRequest) {
           : Number(
               body.diversityConfig?.randomTransitionDuration ??
                 state.diversityConfig.randomTransitionDuration ??
-                0
+                0,
             ),
     };
 
@@ -133,7 +128,7 @@ export async function POST(req: NextRequest) {
             "Không thể tạo tổ hợp. Hãy đảm bảo mỗi Category có ít nhất 1 video.",
           warnings: plan.warnings,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -227,9 +222,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      { error: `Lỗi khi tạo tổ hợp video trộn: ${msg}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Lỗi khi tạo tổ hợp video trộn: ${msg}` }, { status: 500 });
   }
 }

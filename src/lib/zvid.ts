@@ -1,6 +1,7 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
+
 import { OUTPUTS_DIR } from "@/lib/store";
 import { ZvidRenderPayload } from "@/types/lachvid";
 
@@ -10,7 +11,7 @@ export function resolveZvidApiKey(overrideKey?: string): string {
   const key = (overrideKey || process.env.ZVID_API_KEY || "").trim();
   if (!key) {
     throw new Error(
-      "Thiếu ZVID_API_KEY. Vui lòng nhập API Key trên giao diện hoặc cấu hình biến môi trường ZVID_API_KEY."
+      "Thiếu ZVID_API_KEY. Vui lòng nhập API Key trên giao diện hoặc cấu hình biến môi trường ZVID_API_KEY.",
     );
   }
   return key;
@@ -105,9 +106,7 @@ export async function uploadFileToZvid(params: {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(
-      data.message || data.error || `Upload lên Zvid thất bại (HTTP ${res.status})`
-    );
+    throw new Error(data.message || data.error || `Upload lên Zvid thất bại (HTTP ${res.status})`);
   }
 
   return data.upload as {
@@ -205,18 +204,15 @@ export async function submitZvidRenderJob(params: {
   if (res.status === 429) {
     const retryHeader = res.headers.get("retry-after");
     const data = await res.json().catch(() => ({}));
-    const waitSeconds =
-      Number(retryHeader || data.retryAfter || 5) || 5;
+    const waitSeconds = Number(retryHeader || data.retryAfter || 5) || 5;
     throw new Error(
-      `HTTP 429: Chạm giới hạn hàng đợi của gói Zvid. Vui lòng đợi ${waitSeconds}s (Retry-After) rồi thử lại.`
+      `HTTP 429: Chạm giới hạn hàng đợi của gói Zvid. Vui lòng đợi ${waitSeconds}s (Retry-After) rồi thử lại.`,
     );
   }
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(
-      data.message || data.error || `Submit render thất bại (HTTP ${res.status})`
-    );
+    throw new Error(data.message || data.error || `Submit render thất bại (HTTP ${res.status})`);
   }
 
   return {
@@ -231,10 +227,7 @@ export async function submitZvidRenderJob(params: {
  * 6. Poll Render Job Status and Auto-Persist Completed Output Locally
  * GET /api/jobs/{id}
  */
-export async function getZvidJobStatusAndPersist(params: {
-  jobId: string;
-  apiKey?: string;
-}) {
+export async function getZvidJobStatusAndPersist(params: { jobId: string; apiKey?: string }) {
   const key = resolveZvidApiKey(params.apiKey);
   const res = await fetch(`${ZVID_BASE_URL}/api/jobs/${params.jobId}`, {
     method: "GET",
@@ -246,9 +239,7 @@ export async function getZvidJobStatusAndPersist(params: {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(
-      data.message || data.error || `Không kiểm tra được job ${params.jobId}`
-    );
+    throw new Error(data.message || data.error || `Không kiểm tra được job ${params.jobId}`);
   }
 
   // Handle both result shapes documented in Zvid API: string OR { url: string }
@@ -294,7 +285,7 @@ export async function getZvidJobStatusAndPersist(params: {
  */
 export async function persistRemoteVideoLocally(
   jobId: string,
-  remoteUrl: string
+  remoteUrl: string,
 ): Promise<string | null> {
   try {
     if (!fs.existsSync(OUTPUTS_DIR)) {

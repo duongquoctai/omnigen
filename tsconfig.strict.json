@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/contexts/**/*.ts",
+    "src/contexts/**/*.tsx",
+    "src/platform/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/shared/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}

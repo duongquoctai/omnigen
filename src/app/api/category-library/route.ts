@@ -1,9 +1,24 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+
 import { NextRequest, NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth";
+import {
+  getProjectCategoryPools,
+  getProjectVoiceTracks,
+  resolveFolderAccess,
+  saveProjectCategoryPools,
+  saveProjectVoiceTracks,
+} from "@/lib/db";
+import {
+  extractGoogleDriveFileId,
+  probeGoogleDriveClipMetadata,
+  probeGoogleDriveVoiceMetadata,
+} from "@/lib/drive";
 import {
   cleanupExpiredSessions,
   clearSessionCategories,
@@ -14,19 +29,6 @@ import {
   writeProjectState,
 } from "@/lib/store";
 import { CategoryPools, CategoryVideoItem, MultiVoiceItem, ShotCategory } from "@/types/lachvid";
-import {
-  extractGoogleDriveFileId,
-  probeGoogleDriveClipMetadata,
-  probeGoogleDriveVoiceMetadata,
-} from "@/lib/drive";
-import {
-  getProjectCategoryPools,
-  getProjectVoiceTracks,
-  resolveFolderAccess,
-  saveProjectCategoryPools,
-  saveProjectVoiceTracks,
-} from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -79,7 +81,7 @@ export async function GET(req: NextRequest) {
 async function pMap<T, R>(
   items: T[],
   fn: (item: T, index: number) => Promise<R>,
-  concurrency = 6
+  concurrency = 6,
 ): Promise<R[]> {
   const results: R[] = [];
   let index = 0;
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
     const targetCategory = (req.headers.get("x-target-category") as string) || "product";
     const relativePath = decodeURIComponent(req.headers.get("x-relative-path") || "");
     const sessionId = sanitizeSessionId(
-      req.headers.get("x-session-id") || getSessionIdFromHeaders(req.headers)
+      req.headers.get("x-session-id") || getSessionIdFromHeaders(req.headers),
     );
     const projectId = req.headers.get("x-project-id") || "";
 
@@ -122,7 +124,7 @@ export async function POST(req: NextRequest) {
       if (!access.isOwner && !access.permissions.mix?.actions?.includes("edit")) {
         return NextResponse.json(
           { error: "Bạn không có quyền chỉnh sửa kho clip của dự án này." },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -134,18 +136,44 @@ export async function POST(req: NextRequest) {
     let detectedCat: ShotCategory = "product";
     const lowerRel = relativePath.toLowerCase();
     const lowerName = fileName.toLowerCase();
-    const isVoice = targetCategory === "voice" || lowerRel.includes("/voice/") || lowerRel.includes("\\voice\\");
+    const isVoice =
+      targetCategory === "voice" || lowerRel.includes("/voice/") || lowerRel.includes("\\voice\\");
 
     if (!isVoice) {
-      if (lowerRel.includes("/open/") || lowerRel.includes("\\open\\") || lowerName.startsWith("open_") || targetCategory === "open") {
+      if (
+        lowerRel.includes("/open/") ||
+        lowerRel.includes("\\open\\") ||
+        lowerName.startsWith("open_") ||
+        targetCategory === "open"
+      ) {
         detectedCat = "open";
-      } else if (lowerRel.includes("/product/") || lowerRel.includes("\\product\\") || lowerName.startsWith("product_") || targetCategory === "product") {
+      } else if (
+        lowerRel.includes("/product/") ||
+        lowerRel.includes("\\product\\") ||
+        lowerName.startsWith("product_") ||
+        targetCategory === "product"
+      ) {
         detectedCat = "product";
-      } else if (lowerRel.includes("/texture/") || lowerRel.includes("\\texture\\") || lowerName.startsWith("texture_") || targetCategory === "texture") {
+      } else if (
+        lowerRel.includes("/texture/") ||
+        lowerRel.includes("\\texture\\") ||
+        lowerName.startsWith("texture_") ||
+        targetCategory === "texture"
+      ) {
         detectedCat = "texture";
-      } else if (lowerRel.includes("/apply/") || lowerRel.includes("\\apply\\") || lowerName.startsWith("apply_") || targetCategory === "apply") {
+      } else if (
+        lowerRel.includes("/apply/") ||
+        lowerRel.includes("\\apply\\") ||
+        lowerName.startsWith("apply_") ||
+        targetCategory === "apply"
+      ) {
         detectedCat = "apply";
-      } else if (lowerRel.includes("/end/") || lowerRel.includes("\\end\\") || lowerName.startsWith("end_") || targetCategory === "end") {
+      } else if (
+        lowerRel.includes("/end/") ||
+        lowerRel.includes("\\end\\") ||
+        lowerName.startsWith("end_") ||
+        targetCategory === "end"
+      ) {
         detectedCat = "end";
       }
     }
@@ -278,7 +306,7 @@ export async function POST(req: NextRequest) {
     jsonData = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     action = (jsonData?.action as string) || "ingest_drive_links";
     sessionId = sanitizeSessionId(
-      (jsonData?.sessionId as string) || getSessionIdFromHeaders(req.headers)
+      (jsonData?.sessionId as string) || getSessionIdFromHeaders(req.headers),
     );
     projectId = (jsonData?.projectId as string) || "";
   } else {
@@ -288,7 +316,7 @@ export async function POST(req: NextRequest) {
     }
     action = (formData.get("action") as string) || "upload";
     sessionId = sanitizeSessionId(
-      (formData.get("sessionId") as string) || getSessionIdFromHeaders(req.headers)
+      (formData.get("sessionId") as string) || getSessionIdFromHeaders(req.headers),
     );
     projectId = (formData.get("projectId") as string) || "";
   }
@@ -299,7 +327,7 @@ export async function POST(req: NextRequest) {
     if (!access.isOwner && !access.permissions.mix?.actions?.includes("edit")) {
       return NextResponse.json(
         { error: "Bạn không có quyền chỉnh sửa kho clip của dự án này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
   }
@@ -320,7 +348,9 @@ export async function POST(req: NextRequest) {
     let categoryLinksMap: Partial<Record<ShotCategory | "voice", string[]>> = {};
 
     if (jsonData?.categoryLinks && typeof jsonData.categoryLinks === "object") {
-      categoryLinksMap = jsonData.categoryLinks as Partial<Record<ShotCategory | "voice", string[]>>;
+      categoryLinksMap = jsonData.categoryLinks as Partial<
+        Record<ShotCategory | "voice", string[]>
+      >;
     } else if (jsonData?.targetCategory && Array.isArray(jsonData?.links)) {
       const cat = jsonData.targetCategory as string;
       if (VALID_CATS.includes(cat as ShotCategory) || cat === "voice") {
@@ -351,7 +381,7 @@ export async function POST(req: NextRequest) {
 
         // Check if already in pool
         const alreadyExists = currentCatPool.some(
-          (it) => it.driveFileId === fileId || it.id.includes(fileId.slice(0, 10))
+          (it) => it.driveFileId === fileId || it.id.includes(fileId.slice(0, 10)),
         );
         if (alreadyExists || videoTasks.some((t) => t.category === cat && t.fileId === fileId)) {
           duplicateCount++;
@@ -369,7 +399,7 @@ export async function POST(req: NextRequest) {
       if (!fileId) continue;
 
       const alreadyExists = currentVoices.some(
-        (v) => v.driveFileId === fileId || v.id.includes(fileId.slice(0, 10))
+        (v) => v.driveFileId === fileId || v.id.includes(fileId.slice(0, 10)),
       );
       if (alreadyExists || voiceTasks.some((t) => t.fileId === fileId)) {
         duplicateCount++;
@@ -405,7 +435,7 @@ export async function POST(req: NextRequest) {
               const probe = await probeGoogleDriveClipMetadata(task.fileId);
               return { category: task.category, probe, idx };
             },
-            24
+            24,
           )
         : Promise.resolve([]),
       voiceTasks.length > 0
@@ -414,11 +444,11 @@ export async function POST(req: NextRequest) {
             async (task, idx) => {
               const probe = await probeGoogleDriveVoiceMetadata(
                 task.fileId,
-                currentVoices.length + idx + 1
+                currentVoices.length + idx + 1,
               );
               return { probe, idx };
             },
-            24
+            24,
           )
         : Promise.resolve([]),
     ]);
@@ -519,7 +549,11 @@ export async function POST(req: NextRequest) {
     if (projectId) {
       await saveProjectVoiceTracks(projectId, state.multiVoiceTracks);
     }
-    return NextResponse.json({ success: true, sessionId, multiVoiceTracks: state.multiVoiceTracks });
+    return NextResponse.json({
+      success: true,
+      sessionId,
+      multiVoiceTracks: state.multiVoiceTracks,
+    });
   }
 
   // Clear all voices
@@ -595,7 +629,8 @@ export async function POST(req: NextRequest) {
   // Remove single item
   if (action === "remove_item") {
     const itemId = (formData?.get("itemId") || jsonData?.itemId) as string;
-    const category = ((formData?.get("category") || jsonData?.category) as ShotCategory) || "product";
+    const category =
+      ((formData?.get("category") || jsonData?.category) as ShotCategory) || "product";
     if (category && pools[category]) {
       const targetItem = pools[category].find((i) => i.id === itemId);
       if (targetItem?.localPath && fs.existsSync(targetItem.localPath)) {
@@ -686,19 +721,45 @@ export async function POST(req: NextRequest) {
       }
 
       let detectedCat: ShotCategory = "product";
-      const relativePath = (file as unknown as { webkitRelativePath?: string }).webkitRelativePath || "";
+      const relativePath =
+        (file as unknown as { webkitRelativePath?: string }).webkitRelativePath || "";
       const lowerRel = relativePath.toLowerCase();
       const lowerName = fileName.toLowerCase();
 
-      if (lowerRel.includes("/open/") || lowerRel.includes("\\open\\") || lowerName.startsWith("open_") || targetCategory === "open") {
+      if (
+        lowerRel.includes("/open/") ||
+        lowerRel.includes("\\open\\") ||
+        lowerName.startsWith("open_") ||
+        targetCategory === "open"
+      ) {
         detectedCat = "open";
-      } else if (lowerRel.includes("/product/") || lowerRel.includes("\\product\\") || lowerName.startsWith("product_") || targetCategory === "product") {
+      } else if (
+        lowerRel.includes("/product/") ||
+        lowerRel.includes("\\product\\") ||
+        lowerName.startsWith("product_") ||
+        targetCategory === "product"
+      ) {
         detectedCat = "product";
-      } else if (lowerRel.includes("/texture/") || lowerRel.includes("\\texture\\") || lowerName.startsWith("texture_") || targetCategory === "texture") {
+      } else if (
+        lowerRel.includes("/texture/") ||
+        lowerRel.includes("\\texture\\") ||
+        lowerName.startsWith("texture_") ||
+        targetCategory === "texture"
+      ) {
         detectedCat = "texture";
-      } else if (lowerRel.includes("/apply/") || lowerRel.includes("\\apply\\") || lowerName.startsWith("apply_") || targetCategory === "apply") {
+      } else if (
+        lowerRel.includes("/apply/") ||
+        lowerRel.includes("\\apply\\") ||
+        lowerName.startsWith("apply_") ||
+        targetCategory === "apply"
+      ) {
         detectedCat = "apply";
-      } else if (lowerRel.includes("/end/") || lowerRel.includes("\\end\\") || lowerName.startsWith("end_") || targetCategory === "end") {
+      } else if (
+        lowerRel.includes("/end/") ||
+        lowerRel.includes("\\end\\") ||
+        lowerName.startsWith("end_") ||
+        targetCategory === "end"
+      ) {
         detectedCat = "end";
       }
 

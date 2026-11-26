@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { readProjectState, writeProjectState } from "@/lib/store";
-import {
-  persistRemoteVideoLocally,
-  verifyZvidWebhookSignature,
-} from "@/lib/zvid";
+import { persistRemoteVideoLocally, verifyZvidWebhookSignature } from "@/lib/zvid";
 
 const processedDeliveries = new Set<string>();
 
@@ -59,8 +57,7 @@ export async function POST(req: NextRequest) {
         writeProjectState(state);
       } else if (event.event === "render.failed") {
         target.renderState = "failed";
-        target.failedReason =
-          event.data?.error || "Render failed via Zvid webhook";
+        target.failedReason = event.data?.error || "Render failed via Zvid webhook";
         target.updatedAt = new Date().toISOString();
         writeProjectState(state);
       }

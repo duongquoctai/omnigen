@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getSessionIdFromHeaders,
-  readProjectState,
-  sanitizeSessionId,
-} from "@/lib/store";
+
+import { getSessionIdFromHeaders, readProjectState, sanitizeSessionId } from "@/lib/store";
 import { ComposedVideo } from "@/types/lachvid";
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:3006";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,14 +13,10 @@ export async function POST(req: NextRequest) {
     const state = readProjectState(sessionId);
 
     const composedVideos: ComposedVideo[] =
-      body.videos ||
-      (body.video ? [body.video] : state.composedVideos);
+      body.videos || (body.video ? [body.video] : state.composedVideos);
 
     if (!composedVideos || composedVideos.length === 0) {
-      return NextResponse.json(
-        { error: "Không có video tổ hợp nào để render." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Không có video tổ hợp nào để render." }, { status: 400 });
     }
 
     const multiVoicePool = Array.isArray(body.multiVoiceTracks)
@@ -78,7 +70,7 @@ export async function POST(req: NextRequest) {
       const errText = await pyRes.text();
       return NextResponse.json(
         { error: `Python service render error: ${errText}` },
-        { status: pyRes.status }
+        { status: pyRes.status },
       );
     }
 
@@ -110,9 +102,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      { error: `Lỗi khi render video: ${message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Lỗi khi render video: ${message}` }, { status: 500 });
   }
 }

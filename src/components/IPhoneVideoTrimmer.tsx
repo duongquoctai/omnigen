@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect } from "react";
 import { RotateCcw } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export interface IPhoneVideoTrimmerProps {
   videoBegin: number;
@@ -62,12 +62,8 @@ export default function IPhoneVideoTrimmer({
   const widthPercent = Math.max(0, endPercent - beginPercent);
 
   // Ghost markers positions (mốc cảnh gốc AI phát hiện)
-  const rawBeginPercent = hasRaw
-    ? ((baseRawBegin - windowStart) / windowSpan) * 100
-    : null;
-  const rawEndPercent = hasRaw
-    ? ((baseRawEnd - windowStart) / windowSpan) * 100
-    : null;
+  const rawBeginPercent = hasRaw ? ((baseRawBegin - windowStart) / windowSpan) * 100 : null;
+  const rawEndPercent = hasRaw ? ((baseRawEnd - windowStart) / windowSpan) * 100 : null;
 
   // Helper to round seconds to step precision (e.g. 0.1s)
   const roundSec = useCallback(
@@ -75,7 +71,7 @@ export default function IPhoneVideoTrimmer({
       const factor = 1 / step;
       return Math.round(sec * factor) / factor;
     },
-    [step]
+    [step],
   );
 
   const dragStartRef = useRef<{
@@ -96,10 +92,7 @@ export default function IPhoneVideoTrimmer({
     windowEnd: 1,
   });
 
-  const handlePointerDown = (
-    e: React.PointerEvent,
-    type: "begin" | "end" | "middle"
-  ) => {
+  const handlePointerDown = (e: React.PointerEvent, type: "begin" | "end" | "middle") => {
     e.preventDefault();
     e.stopPropagation();
     if (!trackRef.current) return;
@@ -188,9 +181,7 @@ export default function IPhoneVideoTrimmer({
 
   // Adjust begin / end via buttons
   const stepBegin = (amount: number) => {
-    const next = roundSec(
-      Math.max(0, Math.min(safeEnd - minClipDuration, safeBegin + amount))
-    );
+    const next = roundSec(Math.max(0, Math.min(safeEnd - minClipDuration, safeBegin + amount)));
     onChange(next, safeEnd);
     if (onSeekPreview) onSeekPreview(next);
     onScrubEnd?.();
@@ -198,7 +189,7 @@ export default function IPhoneVideoTrimmer({
 
   const stepEnd = (amount: number) => {
     const next = roundSec(
-      Math.max(safeBegin + minClipDuration, Math.min(safeTotal, safeEnd + amount))
+      Math.max(safeBegin + minClipDuration, Math.min(safeTotal, safeEnd + amount)),
     );
     onChange(safeBegin, next);
     if (onSeekPreview) onSeekPreview(next);
@@ -225,20 +216,20 @@ export default function IPhoneVideoTrimmer({
 
   return (
     <div
-      className={`space-y-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 ${className}`}
+      className={`space-y-2 rounded-xl border border-slate-800 bg-slate-950/80 p-2.5 ${className}`}
     >
       {/* Header bar of trimmer */}
       <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="font-semibold text-slate-200 text-[11px]">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-slate-200">
             Cắt bớt đầu / cuối (Kéo 2 đầu):
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+          <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">
             {roundSec(safeEnd - safeBegin).toFixed(1)}s
           </span>
           {isModifiedFromRaw && rawBegin !== undefined && rawEnd !== undefined && (
             <span
-              className="text-[10px] font-mono text-indigo-300/90 ml-1"
+              className="ml-1 font-mono text-[10px] text-indigo-300/90"
               title={`Cảnh gốc: ${rawBegin.toFixed(1)}s → ${rawEnd.toFixed(1)}s`}
             >
               (Gốc: {roundSec(rawEnd - rawBegin).toFixed(1)}s)
@@ -250,14 +241,10 @@ export default function IPhoneVideoTrimmer({
         <button
           type="button"
           onClick={handleReset}
-          className="text-[10px] text-slate-400 hover:text-amber-300 inline-flex items-center gap-1 transition"
-          title={
-            hasRaw
-              ? "Khôi phục lại mốc cảnh gốc ban đầu"
-              : "Khôi phục toàn bộ cảnh"
-          }
+          className="inline-flex items-center gap-1 text-[10px] text-slate-400 transition hover:text-amber-300"
+          title={hasRaw ? "Khôi phục lại mốc cảnh gốc ban đầu" : "Khôi phục toàn bộ cảnh"}
         >
-          <RotateCcw className="w-3 h-3" />
+          <RotateCcw className="h-3 w-3" />
           <span>{hasRaw ? "Về cảnh gốc" : "Trọn cảnh"}</span>
         </button>
       </div>
@@ -265,54 +252,48 @@ export default function IPhoneVideoTrimmer({
       {/* iOS-Style Dual Handle Trimmer Bar */}
       <div
         ref={trackRef}
-        className="relative h-11 w-full bg-slate-900/90 rounded-lg select-none border border-slate-700/60 overflow-hidden cursor-default shadow-inner"
+        className="relative h-11 w-full cursor-default overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900/90 shadow-inner select-none"
         style={{ touchAction: "none" }}
       >
         {/* Subtle background tick marks simulating a filmstrip */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none flex justify-between px-2 items-center">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-2 opacity-15">
           {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="w-[1px] h-4 bg-slate-400" />
+            <div key={i} className="h-4 w-[1px] bg-slate-400" />
           ))}
         </div>
 
         {/* Dimmed Left Side (cut out) */}
         <div
-          className="absolute top-0 bottom-0 left-0 bg-slate-950/75 pointer-events-none transition-all duration-75"
+          className="pointer-events-none absolute top-0 bottom-0 left-0 bg-slate-950/75 transition-all duration-75"
           style={{ width: `${beginPercent}%` }}
         />
 
         {/* Dimmed Right Side (cut out) */}
         <div
-          className="absolute top-0 bottom-0 right-0 bg-slate-950/75 pointer-events-none transition-all duration-75"
+          className="pointer-events-none absolute top-0 right-0 bottom-0 bg-slate-950/75 transition-all duration-75"
           style={{ left: `${endPercent}%` }}
         />
 
         {/* Ghost markers - Vạch dấu mờ mốc cảnh gốc AI phát hiện */}
-        {hasRaw &&
-          rawBeginPercent !== null &&
-          rawBeginPercent >= 0 &&
-          rawBeginPercent <= 100 && (
-            <div
-              className="absolute top-0 bottom-0 w-[2px] border-l-2 border-dashed border-indigo-400/50 pointer-events-none z-10"
-              style={{ left: `${rawBeginPercent}%` }}
-              title={`Mốc bắt đầu cảnh gốc: ${rawBegin?.toFixed(1)}s`}
-            />
-          )}
+        {hasRaw && rawBeginPercent !== null && rawBeginPercent >= 0 && rawBeginPercent <= 100 && (
+          <div
+            className="pointer-events-none absolute top-0 bottom-0 z-10 w-[2px] border-l-2 border-dashed border-indigo-400/50"
+            style={{ left: `${rawBeginPercent}%` }}
+            title={`Mốc bắt đầu cảnh gốc: ${rawBegin?.toFixed(1)}s`}
+          />
+        )}
 
-        {hasRaw &&
-          rawEndPercent !== null &&
-          rawEndPercent >= 0 &&
-          rawEndPercent <= 100 && (
-            <div
-              className="absolute top-0 bottom-0 w-[2px] border-l-2 border-dashed border-indigo-400/50 pointer-events-none z-10"
-              style={{ left: `${rawEndPercent}%` }}
-              title={`Mốc kết thúc cảnh gốc: ${rawEnd?.toFixed(1)}s`}
-            />
-          )}
+        {hasRaw && rawEndPercent !== null && rawEndPercent >= 0 && rawEndPercent <= 100 && (
+          <div
+            className="pointer-events-none absolute top-0 bottom-0 z-10 w-[2px] border-l-2 border-dashed border-indigo-400/50"
+            style={{ left: `${rawEndPercent}%` }}
+            title={`Mốc kết thúc cảnh gốc: ${rawEnd?.toFixed(1)}s`}
+          />
+        )}
 
         {/* Selected Active Region (Amber Frame - iPhone Style) */}
         <div
-          className="absolute top-0 bottom-0 border-y-2 border-amber-400 bg-amber-400/10 flex items-center justify-between"
+          className="absolute top-0 bottom-0 flex items-center justify-between border-y-2 border-amber-400 bg-amber-400/10"
           style={{
             left: `${beginPercent}%`,
             width: `${widthPercent}%`,
@@ -324,39 +305,39 @@ export default function IPhoneVideoTrimmer({
           {/* Left Handle (Apple Photos style) */}
           <div
             onPointerDown={(e) => handlePointerDown(e, "begin")}
-            className="absolute -left-[1px] top-0 bottom-0 w-4 bg-amber-400 hover:bg-amber-300 active:bg-amber-200 rounded-l-md flex items-center justify-center cursor-ew-resize select-none shadow-md transition-colors z-20"
+            className="absolute top-0 bottom-0 -left-[1px] z-20 flex w-4 cursor-ew-resize items-center justify-center rounded-l-md bg-amber-400 shadow-md transition-colors select-none hover:bg-amber-300 active:bg-amber-200"
             title={`Kéo mốc bắt đầu (${safeBegin.toFixed(1)}s)`}
           >
-            <div className="flex flex-col gap-0.5 pointer-events-none">
-              <span className="w-0.5 h-3 bg-slate-950 rounded-full" />
-              <span className="w-0.5 h-3 bg-slate-950 rounded-full" />
+            <div className="pointer-events-none flex flex-col gap-0.5">
+              <span className="h-3 w-0.5 rounded-full bg-slate-950" />
+              <span className="h-3 w-0.5 rounded-full bg-slate-950" />
             </div>
             {/* Live tooltip */}
             {activeDrag === "begin" && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[10px] font-bold font-mono shadow whitespace-nowrap pointer-events-none z-30">
+              <div className="pointer-events-none absolute -top-7 left-1/2 z-30 -translate-x-1/2 rounded bg-amber-400 px-1.5 py-0.5 font-mono text-[10px] font-bold whitespace-nowrap text-slate-950 shadow">
                 {safeBegin.toFixed(1)}s
               </div>
             )}
           </div>
 
           {/* Center Info inside Frame */}
-          <div className="w-full text-center text-[10px] font-mono font-bold text-amber-200 pointer-events-none truncate px-4">
+          <div className="pointer-events-none w-full truncate px-4 text-center font-mono text-[10px] font-bold text-amber-200">
             {safeBegin.toFixed(1)}s → {safeEnd.toFixed(1)}s
           </div>
 
           {/* Right Handle (Apple Photos style) */}
           <div
             onPointerDown={(e) => handlePointerDown(e, "end")}
-            className="absolute -right-[1px] top-0 bottom-0 w-4 bg-amber-400 hover:bg-amber-300 active:bg-amber-200 rounded-r-md flex items-center justify-center cursor-ew-resize select-none shadow-md transition-colors z-20"
+            className="absolute top-0 -right-[1px] bottom-0 z-20 flex w-4 cursor-ew-resize items-center justify-center rounded-r-md bg-amber-400 shadow-md transition-colors select-none hover:bg-amber-300 active:bg-amber-200"
             title={`Kéo mốc kết thúc (${safeEnd.toFixed(1)}s)`}
           >
-            <div className="flex flex-col gap-0.5 pointer-events-none">
-              <span className="w-0.5 h-3 bg-slate-950 rounded-full" />
-              <span className="w-0.5 h-3 bg-slate-950 rounded-full" />
+            <div className="pointer-events-none flex flex-col gap-0.5">
+              <span className="h-3 w-0.5 rounded-full bg-slate-950" />
+              <span className="h-3 w-0.5 rounded-full bg-slate-950" />
             </div>
             {/* Live tooltip */}
             {activeDrag === "end" && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[10px] font-bold font-mono shadow whitespace-nowrap pointer-events-none z-30">
+              <div className="pointer-events-none absolute -top-7 left-1/2 z-30 -translate-x-1/2 rounded bg-amber-400 px-1.5 py-0.5 font-mono text-[10px] font-bold whitespace-nowrap text-slate-950 shadow">
                 {safeEnd.toFixed(1)}s
               </div>
             )}
@@ -367,15 +348,13 @@ export default function IPhoneVideoTrimmer({
       {/* Fine-Tuning Controls Row */}
       <div className="grid grid-cols-2 gap-2 pt-0.5">
         {/* Start Point Controls */}
-        <div className="flex items-center gap-1 bg-slate-900/70 border border-slate-800 rounded-lg p-1 text-xs">
-          <span className="text-[10px] text-slate-400 px-1 font-medium shrink-0">
-            Đầu:
-          </span>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1 text-xs">
+          <span className="shrink-0 px-1 text-[10px] font-medium text-slate-400">Đầu:</span>
           <button
             type="button"
             onClick={() => stepBegin(-0.1)}
             disabled={safeBegin <= 0}
-            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-mono text-[10px]"
+            className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             title="Lùi 0.1s"
           >
             -0.1s
@@ -389,21 +368,18 @@ export default function IPhoneVideoTrimmer({
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               if (!isNaN(val)) {
-                const next = Math.max(
-                  0,
-                  Math.min(safeEnd - minClipDuration, roundSec(val))
-                );
+                const next = Math.max(0, Math.min(safeEnd - minClipDuration, roundSec(val)));
                 onChange(next, safeEnd);
                 if (onSeekPreview) onSeekPreview(next);
               }
             }}
-            className="w-full text-center bg-slate-950 border border-slate-700/80 rounded px-1 py-0.5 text-[11px] font-mono text-amber-300 font-semibold focus:outline-none focus:border-amber-400"
+            className="w-full rounded border border-slate-700/80 bg-slate-950 px-1 py-0.5 text-center font-mono text-[11px] font-semibold text-amber-300 focus:border-amber-400 focus:outline-none"
           />
           <button
             type="button"
             onClick={() => stepBegin(0.1)}
             disabled={safeBegin >= safeEnd - minClipDuration}
-            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-mono text-[10px]"
+            className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             title="Tiến 0.1s"
           >
             +0.1s
@@ -411,15 +387,13 @@ export default function IPhoneVideoTrimmer({
         </div>
 
         {/* End Point Controls */}
-        <div className="flex items-center gap-1 bg-slate-900/70 border border-slate-800 rounded-lg p-1 text-xs">
-          <span className="text-[10px] text-slate-400 px-1 font-medium shrink-0">
-            Cuối:
-          </span>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1 text-xs">
+          <span className="shrink-0 px-1 text-[10px] font-medium text-slate-400">Cuối:</span>
           <button
             type="button"
             onClick={() => stepEnd(-0.1)}
             disabled={safeEnd <= safeBegin + minClipDuration}
-            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-mono text-[10px]"
+            className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             title="Lùi 0.1s"
           >
             -0.1s
@@ -435,19 +409,19 @@ export default function IPhoneVideoTrimmer({
               if (!isNaN(val)) {
                 const next = Math.max(
                   safeBegin + minClipDuration,
-                  Math.min(safeTotal, roundSec(val))
+                  Math.min(safeTotal, roundSec(val)),
                 );
                 onChange(safeBegin, next);
                 if (onSeekPreview) onSeekPreview(next);
               }
             }}
-            className="w-full text-center bg-slate-950 border border-slate-700/80 rounded px-1 py-0.5 text-[11px] font-mono text-amber-300 font-semibold focus:outline-none focus:border-amber-400"
+            className="w-full rounded border border-slate-700/80 bg-slate-950 px-1 py-0.5 text-center font-mono text-[11px] font-semibold text-amber-300 focus:border-amber-400 focus:outline-none"
           />
           <button
             type="button"
             onClick={() => stepEnd(0.1)}
             disabled={safeEnd >= safeTotal}
-            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-mono text-[10px]"
+            className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-200 hover:bg-slate-700 disabled:opacity-40"
             title="Tiến 0.1s"
           >
             +0.1s

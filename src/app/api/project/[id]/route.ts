@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth";
 import {
   deleteProject,
   getFoldersByParentId,
@@ -10,12 +12,8 @@ import {
   updateProject,
   updateProjectSettings,
 } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -24,7 +22,7 @@ export async function GET(
     if (access.role === "none") {
       return NextResponse.json(
         { error: "Bạn không có quyền truy cập folder này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -58,10 +56,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -70,7 +65,7 @@ export async function PATCH(
     if (!access.canManageFolders) {
       return NextResponse.json(
         { error: "Bạn không có quyền đổi tên folder này (yêu cầu quyền Chỉnh sửa)." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -93,10 +88,7 @@ export async function PATCH(
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
@@ -105,7 +97,7 @@ export async function POST(
     if (access.role === "none") {
       return NextResponse.json(
         { error: "Bạn không có quyền truy cập folder này." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -116,7 +108,7 @@ export async function POST(
       if (!access.canManageFolders) {
         return NextResponse.json(
           { error: "Bạn không có quyền thay đổi cài đặt của folder." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       await updateProjectSettings(id, body.settings);
@@ -127,7 +119,7 @@ export async function POST(
       if (!access.canManageFolders) {
         return NextResponse.json(
           { error: "Bạn không có quyền đổi tên folder này." },
-          { status: 403 }
+          { status: 403 },
         );
       }
       const name = String(body.name).trim();
@@ -148,20 +140,14 @@ export async function POST(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await getCurrentUser();
     const access = await resolveFolderAccess(id, user?.id, user?.email);
 
     if (!access.canManageFolders) {
-      return NextResponse.json(
-        { error: "Bạn không có quyền xóa folder này." },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Bạn không có quyền xóa folder này." }, { status: 403 });
     }
 
     const ok = await deleteProject(id);

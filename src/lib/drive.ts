@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+
 import { ShotCategory } from "@/types/lachvid";
 
 /**
@@ -35,13 +36,7 @@ export function extractGoogleDriveFileId(rawInput: string): string | null {
   return null;
 }
 
-export const CATEGORY_COLUMNS: ShotCategory[] = [
-  "open",
-  "product",
-  "texture",
-  "apply",
-  "end",
-];
+export const CATEGORY_COLUMNS: ShotCategory[] = ["open", "product", "texture", "apply", "end"];
 
 export interface ParsedFiveColumnLinks {
   open: string[];
@@ -73,7 +68,10 @@ export function parseExcelFiveColumnClipboard(text: string): ParsedFiveColumnLin
 
   if (!text || typeof text !== "string") return result;
 
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   if (lines.length === 0) return result;
 
   const headerKeywords = [
@@ -185,7 +183,7 @@ export function parseMp3DurationFromBuffer(buffer: Buffer, totalSizeBytes: numbe
       buffer.length >= 10 &&
       buffer[0] === 0x49 && // 'I'
       buffer[1] === 0x44 && // 'D'
-      buffer[2] === 0x33    // '3'
+      buffer[2] === 0x33 // '3'
     ) {
       const id3Size =
         ((buffer[6] & 0x7f) << 21) |
@@ -204,7 +202,13 @@ export function parseMp3DurationFromBuffer(buffer: Buffer, totalSizeBytes: numbe
         const layerBits = (buffer[i + 1] >> 1) & 0x03;
         const bitrateIdx = (buffer[i + 2] >> 4) & 0x0f;
         const sampleRateIdx = (buffer[i + 2] >> 2) & 0x03;
-        if (versionBits === 1 || layerBits !== 1 || bitrateIdx === 0 || bitrateIdx === 15 || sampleRateIdx === 3) {
+        if (
+          versionBits === 1 ||
+          layerBits !== 1 ||
+          bitrateIdx === 0 ||
+          bitrateIdx === 15 ||
+          sampleRateIdx === 3
+        ) {
           continue;
         }
         const kbps = versionBits === 3 ? bitratesV1L3[bitrateIdx] : bitratesV2L3[bitrateIdx];
@@ -243,9 +247,7 @@ const voiceProbeCache = new Map<string, DriveVoiceProbeResult>();
  * Checks head (128KB) or tail (128KB) for mvhd atom to extract exact duration.
  * 0 MB disk used.
  */
-export async function probeGoogleDriveClipMetadata(
-  fileId: string
-): Promise<DriveClipProbeResult> {
+export async function probeGoogleDriveClipMetadata(fileId: string): Promise<DriveClipProbeResult> {
   const cached = clipProbeCache.get(fileId);
   if (cached) return cached;
 
@@ -393,7 +395,7 @@ export interface DriveVoiceProbeResult {
  */
 export async function probeGoogleDriveVoiceMetadata(
   fileId: string,
-  indexFallback: number = 1
+  indexFallback: number = 1,
 ): Promise<DriveVoiceProbeResult> {
   const cached = voiceProbeCache.get(fileId);
   if (cached) return cached;
@@ -464,9 +466,7 @@ export async function probeGoogleDriveVoiceMetadata(
 
     // Parse MP3 frame header bitrate duration or MP4/M4A mvhd duration in 1 pass
     let duration =
-      parseMp3DurationFromBuffer(buffer, totalSizeBytes) ||
-      parseMp4DurationFromBuffer(buffer) ||
-      0;
+      parseMp3DurationFromBuffer(buffer, totalSizeBytes) || parseMp4DurationFromBuffer(buffer) || 0;
 
     if (!duration || duration <= 0.1 || duration > 7200) {
       duration = 20.0;

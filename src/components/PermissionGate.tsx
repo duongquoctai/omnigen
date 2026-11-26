@@ -1,11 +1,8 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useMemo } from "react";
-import {
-  ModuleAction,
-  ProjectAccessInfo,
-  ProjectSharePermissions,
-} from "@/types/lachvid";
+
+import { ModuleAction, ProjectAccessInfo, ProjectSharePermissions } from "@/types/lachvid";
 
 export type ProjectModule = keyof ProjectSharePermissions; // "split" | "mix" | "history"
 
@@ -42,21 +39,12 @@ export function ProjectAccessProvider({
       if (!modConfig?.enabled) return false;
       return Boolean(modConfig.actions?.includes(action));
     },
-    [isOwner, access]
+    [isOwner, access],
   );
 
-  const canView = useCallback(
-    (module: ProjectModule) => can(module, "view"),
-    [can]
-  );
-  const canExport = useCallback(
-    (module: ProjectModule) => can(module, "export"),
-    [can]
-  );
-  const canEdit = useCallback(
-    (module: ProjectModule) => can(module, "edit"),
-    [can]
-  );
+  const canView = useCallback((module: ProjectModule) => can(module, "view"), [can]);
+  const canExport = useCallback((module: ProjectModule) => can(module, "export"), [can]);
+  const canEdit = useCallback((module: ProjectModule) => can(module, "edit"), [can]);
 
   const notifyPermissionDenied = useCallback(
     (customMessage?: string) => {
@@ -64,7 +52,7 @@ export function ProjectAccessProvider({
         onPermissionDenied(customMessage);
       }
     },
-    [onPermissionDenied]
+    [onPermissionDenied],
   );
 
   const value = useMemo<ProjectAccessContextValue>(
@@ -77,14 +65,10 @@ export function ProjectAccessProvider({
       canEdit,
       notifyPermissionDenied,
     }),
-    [access, isOwner, can, canView, canExport, canEdit, notifyPermissionDenied]
+    [access, isOwner, can, canView, canExport, canEdit, notifyPermissionDenied],
   );
 
-  return (
-    <ProjectAccessContext.Provider value={value}>
-      {children}
-    </ProjectAccessContext.Provider>
-  );
+  return <ProjectAccessContext.Provider value={value}>{children}</ProjectAccessContext.Provider>;
 }
 
 export function useProjectAccess(): ProjectAccessContextValue {
@@ -110,12 +94,7 @@ export interface PermissionGateProps {
   children: React.ReactNode;
 }
 
-export function PermissionGate({
-  module,
-  action,
-  fallback = null,
-  children,
-}: PermissionGateProps) {
+export function PermissionGate({ module, action, fallback = null, children }: PermissionGateProps) {
   const { can } = useProjectAccess();
   if (!can(module, action)) {
     return <>{fallback}</>;
