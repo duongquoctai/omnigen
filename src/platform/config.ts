@@ -2,6 +2,7 @@ import "server-only";
 
 import { Context, Effect, Layer, Option, Schema } from "effect";
 
+import { DEV_AUTH_SECRET } from "./auth-secret";
 import { ConfigError } from "./errors";
 
 const EnvSchema = Schema.Struct({
@@ -49,7 +50,7 @@ export const loadAppConfig = (
             }),
           );
         }
-        return Effect.succeed("lachvid_dev_only_secret_do_not_use_in_prod");
+        return Effect.succeed(DEV_AUTH_SECRET);
       },
     });
 

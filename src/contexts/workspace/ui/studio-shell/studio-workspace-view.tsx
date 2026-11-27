@@ -14,9 +14,10 @@ import {
 } from "@/contexts/footage";
 import { HistoryTab, recordRenderedBatchAction, type RenderedRecord } from "@/contexts/rendering";
 import type { FolderId } from "@/contexts/shared-kernel";
+import { StatusChip } from "@/shared/ui";
 
+import { WorkspaceHeader } from "../workspace-header";
 import { usePermission } from "./permission-context";
-import { StudioHeaderBar } from "./studio-header-bar";
 import {
   hydrateLibraryFromDto,
   hydrateMinDurationsFromDto,
@@ -78,7 +79,6 @@ export function StudioWorkspaceView({
   parentProjectName,
   folderId,
   folderName,
-  siblingFolders = [],
   sessionId,
   initialTab = "split",
   initialShots,
@@ -175,37 +175,45 @@ export function StudioWorkspaceView({
     visibleTabs.find((t) => t.id === activeTab)?.id ?? firstVisibleTab?.id ?? "split";
 
   return (
-    <div className="flex min-h-screen bg-[#04050c] text-zinc-100">
-      <StudioSidebar
-        activeTab={currentTab}
-        visibleTabs={visibleTabs}
-        onSelectTab={(tab) => {
-          void setActiveTab(tab);
-        }}
-        renderedCount={records.length}
-        parentProjectId={parentProjectId}
-        parentProjectName={parentProjectName}
-        currentFolderId={folderId}
-        siblingFolders={siblingFolders}
+    <div className="flex min-h-screen flex-col bg-[#04050c] text-zinc-100">
+      <WorkspaceHeader
+        breadcrumbs={[
+          { id: "projects", label: "Dự án", href: "/" },
+          {
+            id: "parent",
+            label: parentProjectName,
+            href: `/projects/${parentProjectId}`,
+          },
+          { id: "folder", label: folderName },
+        ]}
+        statusBadge={
+          <StatusChip color="default" variant="soft" size="sm" className="hidden sm:inline-flex">
+            Đã render: {records.length} video
+          </StatusChip>
+        }
+        onOpenShare={
+          isOwner
+            ? () => {
+                setIsShareOpen(true);
+              }
+            : undefined
+        }
+        currentUser={currentUser}
+        showProjectsShortcut={true}
+        onLogout={onLogout}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <StudioHeaderBar
-          parentProjectId={parentProjectId}
-          parentProjectName={parentProjectName}
-          folderId={folderId}
-          folderName={folderName}
-          siblingFolders={siblingFolders}
-          renderedCount={records.length}
-          isOwner={isOwner}
-          onOpenShare={() => {
-            setIsShareOpen(true);
+      <div className="flex min-w-0 flex-1">
+        <StudioSidebar
+          activeTab={currentTab}
+          visibleTabs={visibleTabs}
+          onSelectTab={(tab) => {
+            void setActiveTab(tab);
           }}
-          currentUser={currentUser}
-          onLogout={onLogout}
+          renderedCount={records.length}
         />
 
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
+        <main className="mx-auto w-full max-w-[1440px] min-w-0 flex-1 px-4 py-5 sm:px-6">
           {currentTab === "split" && (
             <SplitTab
               sessionId={sessionId}

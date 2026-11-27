@@ -5,16 +5,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getUserById } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { resolveAuthSecret } from "@/platform/auth-secret";
 import { SessionPayload, UserSafeProfile } from "@/types/lachvid";
 
 export { hashPassword, verifyPassword };
 
 export const AUTH_COOKIE_NAME = "lachvid_token";
 const SESSION_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 ngày
-const SECRET_KEY =
-  process.env.AUTH_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  "lachvid_default_secure_hmac_secret_key_2026";
+const SECRET_KEY = resolveAuthSecret();
 
 /**
  * Ký session token dạng Base64URL(payload).signature

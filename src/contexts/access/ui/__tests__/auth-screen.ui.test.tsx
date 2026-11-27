@@ -31,7 +31,7 @@ describe("access/ui/AuthScreen", () => {
     });
 
     render(<AuthScreen callbackUrl="/projects/1" />);
-    await user.click(screen.getByRole("button", { name: "Đăng ký tài khoản" }));
+    await user.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
 
     await user.type(screen.getByPlaceholderText("Nguyễn Văn A"), "New User");
     await user.type(screen.getByPlaceholderText("ten@congty.com"), "new@example.com");

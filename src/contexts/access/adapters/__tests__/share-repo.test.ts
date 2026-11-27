@@ -11,7 +11,7 @@ import { CurrentUserLive, ShareRepoLive } from "../share-repo";
 
 const fsStore = vi.hoisted(() => ({
   content: JSON.stringify({
-    parentProjects: { proj_1: { id: "proj_1", userId: "u_owner" } },
+    parentProjects: { proj_1: { id: "proj_1", ownerId: "u_owner" } },
     users: {
       u_member: { id: "u_member", email: "member@example.com", name: "Member" },
     },
@@ -47,7 +47,8 @@ describe("access/adapters/ShareRepoLive", () => {
         const sql = strings.join("?");
         queries.push(sql);
         if (sql.includes("FROM lachvid_parent_projects")) {
-          return Effect.succeed([{ user_id: "u_owner" }]);
+          expect(sql).toContain("SELECT owner_id");
+          return Effect.succeed([{ owner_id: "u_owner" }]);
         }
         if (sql.includes("FROM lachvid_resource_shares s")) {
           return Effect.succeed([

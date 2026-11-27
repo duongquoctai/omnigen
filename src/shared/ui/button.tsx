@@ -30,7 +30,7 @@ export function Button({
     <HeroButton
       variant={variant}
       isDisabled={Boolean(isDisabled) || Boolean(isLoading)}
-      className={`${variantClass} ${String(className)}`.trim()}
+      className={`!rounded-md ${variantClass} ${String(className)}`.trim()}
       {...props}
     >
       {children}

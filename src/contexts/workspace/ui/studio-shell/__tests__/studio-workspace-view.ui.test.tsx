@@ -63,6 +63,11 @@ describe("workspace/ui/StudioWorkspaceView", () => {
     );
 
     expect(screen.getByTestId("split-tab")).toBeInTheDocument();
+    expect(screen.getByText("Dự án")).toBeInTheDocument();
+    expect(screen.getByText("Skin1004")).toBeInTheDocument();
+    expect(screen.getByText("Thư mục 1")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mở danh sách thư mục" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Chuyển nhanh thư mục")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Trộn ghép" }));
     await waitFor(() => {

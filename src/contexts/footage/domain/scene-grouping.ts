@@ -14,7 +14,7 @@ const CATEGORY_CYCLE = ["open", "product", "texture", "apply"] as const;
 const LOOP_POOL = ["apply", "product", "texture"] as const;
 
 const CATEGORY_LABELS: Readonly<Record<ShotCategory, string>> = {
-  open: "Open (Hook)",
+  open: "Open",
   product: "Product",
   texture: "Texture",
   apply: "Apply / Use",

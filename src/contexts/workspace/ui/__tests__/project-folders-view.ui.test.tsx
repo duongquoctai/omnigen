@@ -2,6 +2,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProjectFoldersView } from "../project-folders-view";
@@ -37,18 +38,48 @@ vi.mock("@/contexts/access/ui/actions", () => accessActionMocks);
 describe("workspace/ui/ProjectFoldersView", () => {
   it("renders empty state when there are no folders", () => {
     render(
-      <ProjectFoldersView
-        project={{ id: "p1", name: "Skin1004", isOwner: false }}
-        initialFolders={[]}
-        canManageFolders={false}
-      />,
+      <NuqsTestingAdapter>
+        <ProjectFoldersView
+          project={{ id: "p1", name: "Skin1004", isOwner: false }}
+          initialFolders={[]}
+          canManageFolders={false}
+        />
+      </NuqsTestingAdapter>,
     );
     expect(screen.getByText("Chưa có thư mục làm việc nào")).toBeInTheDocument();
     expect(screen.getByText("Được chia sẻ")).toBeInTheDocument();
   });
 
+  it("supports searching folders and clicking folder card to navigate", async () => {
+    const user = userEvent.setup();
+    routerMocks.push.mockClear();
+
+    render(
+      <NuqsTestingAdapter>
+        <ProjectFoldersView
+          project={{ id: "p1", name: "Skin1004", isOwner: true }}
+          initialFolders={[
+            { id: "f1", name: "Kem chống nắng", poolCount: 3, renderedCount: 1 },
+            { id: "f2", name: "Sữa rửa mặt", poolCount: 5, renderedCount: 2 },
+          ]}
+          canManageFolders={true}
+        />
+      </NuqsTestingAdapter>,
+    );
+
+    expect(screen.queryByText("Mở folder")).not.toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("Tìm kiếm folder..."), "rửa mặt");
+    expect(screen.queryByText("Kem chống nắng")).not.toBeInTheDocument();
+    expect(screen.getByText("Sữa rửa mặt")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Mở folder Sữa rửa mặt" }));
+    expect(routerMocks.push).toHaveBeenCalledWith("/projects/p1/folders/f2");
+  });
+
   it("creates, renames, and deletes a folder via Server Actions", async () => {
     const user = userEvent.setup();
+    routerMocks.push.mockClear();
     actionMocks.createFolderAction.mockResolvedValue({ ok: true, data: { id: "f2" } });
     actionMocks.renameFolderAction.mockResolvedValue({
       ok: true,
@@ -60,12 +91,14 @@ describe("workspace/ui/ProjectFoldersView", () => {
     });
 
     render(
-      <ProjectFoldersView
-        project={{ id: "p1", name: "Skin1004", description: "Serum", isOwner: true }}
-        initialFolders={[{ id: "f1", name: "Thư mục 1", poolCount: 3, renderedCount: 1 }]}
-        canManageFolders={true}
-        currentUser={{ id: "u1", name: "Tai", email: "tai@example.com" }}
-      />,
+      <NuqsTestingAdapter>
+        <ProjectFoldersView
+          project={{ id: "p1", name: "Skin1004", description: "Serum", isOwner: true }}
+          initialFolders={[{ id: "f1", name: "Thư mục 1", poolCount: 3, renderedCount: 1 }]}
+          canManageFolders={true}
+          currentUser={{ id: "u1", name: "Tai", email: "tai@example.com" }}
+        />
+      </NuqsTestingAdapter>,
     );
 
     expect(screen.getByText("Thư mục 1")).toBeInTheDocument();

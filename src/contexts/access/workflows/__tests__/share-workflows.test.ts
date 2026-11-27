@@ -50,7 +50,10 @@ const makeTestLayers = (options?: {
       }),
     removeShare: () => Effect.succeed(options?.removeResult ?? true),
     listShareableUsers: () =>
-      Effect.succeed([{ id: "u_member", email: "member@example.com", name: "Member" }]),
+      Effect.succeed([
+        { id: "u_owner", email: "owner@example.com", name: "Owner" },
+        { id: "u_member", email: "member@example.com", name: "Member" },
+      ]),
   });
 
   return Layer.mergeAll(userLayer, repoLayer);

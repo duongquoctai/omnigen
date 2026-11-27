@@ -12,8 +12,19 @@ export interface ModalProps {
   readonly description?: string;
   readonly children: ReactNode;
   readonly footer?: ReactNode;
-  readonly size?: "sm" | "md" | "lg" | "cover" | "full";
+  readonly size?: "sm" | "md" | "lg" | "xl" | "2xl" | "cover" | "full";
 }
+
+const CUSTOM_CONTAINER_CLASSES: Readonly<Partial<Record<NonNullable<ModalProps["size"]>, string>>> =
+  {
+    xl: "w-full sm:w-[min(92vw,42rem)]",
+    "2xl": "w-full sm:w-[min(92vw,52rem)]",
+  };
+
+const CUSTOM_DIALOG_CLASSES: Readonly<Partial<Record<NonNullable<ModalProps["size"]>, string>>> = {
+  xl: "max-w-2xl",
+  "2xl": "max-w-4xl",
+};
 
 export function Modal({
   isOpen,
@@ -24,11 +35,18 @@ export function Modal({
   footer,
   size = "md",
 }: ModalProps) {
+  const heroSize = size === "xl" || size === "2xl" ? "lg" : size;
+  const containerClassName = CUSTOM_CONTAINER_CLASSES[size];
+  const dialogClassName = CUSTOM_DIALOG_CLASSES[size];
+
   return (
     <HeroModal isOpen={isOpen} onOpenChange={onOpenChange}>
       <HeroModal.Backdrop>
-        <HeroModal.Container size={size}>
-          <HeroModal.Dialog>
+        <HeroModal.Container
+          size={heroSize}
+          {...(containerClassName ? { className: containerClassName } : {})}
+        >
+          <HeroModal.Dialog {...(dialogClassName ? { className: dialogClassName } : {})}>
             <HeroModal.CloseTrigger />
             <HeroModal.Header>
               <HeroModal.Heading>{title}</HeroModal.Heading>

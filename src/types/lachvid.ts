@@ -15,10 +15,7 @@ export const DEFAULT_CATEGORY_MIN_DURATIONS: CategoryMinDurations = {
  * tự động giảm speed (slow-motion) để kéo dài cho đủ số giây tối thiểu.
  * Nếu thời lượng gốc >= số giây tối thiểu, giữ nguyên 1 clip với speed = 1.
  */
-export function computeShotSpeedForMinDuration(
-  rawDuration: number,
-  minDuration: number
-): number {
+export function computeShotSpeedForMinDuration(rawDuration: number, minDuration: number): number {
   if (rawDuration <= 0.05 || minDuration <= 0.05) return 1;
   if (rawDuration >= minDuration) return 1;
   const calculated = rawDuration / minDuration;
@@ -36,7 +33,7 @@ export const SHOT_CATEGORIES: {
 }[] = [
   {
     id: "open",
-    label: "1. Open (Hook)",
+    label: "1. Open",
     hotkey: "1",
     color: "#f43f5e",
     badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/40",
@@ -420,5 +417,3 @@ export interface ProjectAccessInfo {
     name: string;
   };
 }
-
-

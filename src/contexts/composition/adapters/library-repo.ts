@@ -14,7 +14,7 @@ import type {
   ShotCategory,
 } from "@/contexts/shared-kernel";
 import { PersistenceError } from "@/platform/errors";
-import { SqlClient } from "@/platform/sql";
+import { buildBatchInsertTemplate, SqlClient } from "@/platform/sql";
 
 import type { Clip, ClipLibrary, DriveFileId } from "../domain/types";
 import { ClipLibraryRepo, PlannedVideoRepo, RenderedTuplesQuery } from "../workflows/ports";
@@ -202,47 +202,76 @@ export const ClipLibraryRepoLive = Layer.effect(
                 }),
             }),
 
-      addClips: (folderId, clips) =>
-        sql.isCloud
-          ? Effect.forEach(
-              clips,
-              (clip) => {
-                const now = new Date().toISOString();
+      addClips: (folderId, clips) => {
+        if (clips.length === 0) return Effect.void;
+        if (sql.isCloud) {
+          const BATCH_SIZE = 50;
+          const now = new Date().toISOString();
+          const batches: Array<ReadonlyArray<Clip>> = [];
+          for (let i = 0; i < clips.length; i += BATCH_SIZE) {
+            batches.push(clips.slice(i, i + BATCH_SIZE));
+          }
+          return Effect.forEach(
+            batches,
+            (batch) => {
+              const rows = batch.map((clip) => {
                 const driveId = clip.source._tag === "DriveClip" ? clip.source.fileId : null;
                 const sourceType = clip.source._tag === "DriveClip" ? "drive" : "local";
                 const localUrl =
                   clip.source._tag === "DriveClip" ? clip.source.streamUrl : clip.source.localUrl;
                 const localPath = clip.source._tag === "DriveClip" ? null : clip.source.localPath;
-                return sql.query`INSERT OR REPLACE INTO lachvid_category_items (id, project_id, category, name, file_name, local_url, local_path, duration, drive_file_id, source_type, lock_flip_h, content_hash, created_at) VALUES (${clip.id}, ${folderId}, ${clip.category}, ${clip.name}, ${clip.fileName}, ${localUrl}, ${localPath}, ${clip.duration}, ${driveId}, ${sourceType}, ${clip.lockFlipH ? 1 : 0}, ${Option.getOrNull(clip.contentHash)}, ${now})`;
-              },
-              { discard: true },
-            )
-          : Effect.try({
-              try: () => {
-                const db = readLocalDb();
-                const pools = { ...(db.pools ?? {}) };
-                const current = pools[folderId] ?? emptyLocalPools();
-                const nextFolder: Record<ShotCategory, Array<LocalCategoryItem>> = {
-                  open: [...(current.open ?? [])],
-                  product: [...(current.product ?? [])],
-                  texture: [...(current.texture ?? [])],
-                  apply: [...(current.apply ?? [])],
-                  end: [...(current.end ?? [])],
-                };
-                for (const clip of clips) {
-                  const arr = nextFolder[clip.category].filter((item) => item.id !== clip.id);
-                  arr.push(toLocalCategoryItem(clip));
-                  nextFolder[clip.category] = arr;
-                }
-                pools[folderId] = nextFolder;
-                writeLocalDb({ ...db, pools });
-              },
-              catch: (cause) =>
-                new PersistenceError({
-                  message: "Không thể lưu clip vào kho",
-                  cause,
-                }),
+                return [
+                  clip.id,
+                  folderId,
+                  clip.category,
+                  clip.name,
+                  clip.fileName,
+                  localUrl,
+                  localPath,
+                  clip.duration,
+                  driveId,
+                  sourceType,
+                  clip.lockFlipH ? 1 : 0,
+                  Option.getOrNull(clip.contentHash),
+                  now,
+                ] as const;
+              });
+              const { strings, values } = buildBatchInsertTemplate(
+                "INSERT OR REPLACE INTO lachvid_category_items (id, project_id, category, name, file_name, local_url, local_path, duration, drive_file_id, source_type, lock_flip_h, content_hash, created_at) VALUES ",
+                rows,
+              );
+              return sql.execute(strings, ...values);
+            },
+            { discard: true },
+          );
+        }
+        return Effect.try({
+          try: () => {
+            const db = readLocalDb();
+            const pools = { ...(db.pools ?? {}) };
+            const current = pools[folderId] ?? emptyLocalPools();
+            const nextFolder: Record<ShotCategory, Array<LocalCategoryItem>> = {
+              open: [...(current.open ?? [])],
+              product: [...(current.product ?? [])],
+              texture: [...(current.texture ?? [])],
+              apply: [...(current.apply ?? [])],
+              end: [...(current.end ?? [])],
+            };
+            for (const clip of clips) {
+              const arr = nextFolder[clip.category].filter((item) => item.id !== clip.id);
+              arr.push(toLocalCategoryItem(clip));
+              nextFolder[clip.category] = arr;
+            }
+            pools[folderId] = nextFolder;
+            writeLocalDb({ ...db, pools });
+          },
+          catch: (cause) =>
+            new PersistenceError({
+              message: "Không thể lưu clip vào kho",
+              cause,
             }),
+        });
+      },
 
       removeClip: (folderId, clipId) =>
         sql.isCloud

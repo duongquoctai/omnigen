@@ -7,7 +7,7 @@ import { Effect, Layer, Option } from "effect";
 
 import type { LocalPath, MediaUrl, Seconds, VoiceId } from "@/contexts/shared-kernel";
 import { PersistenceError } from "@/platform/errors";
-import { SqlClient } from "@/platform/sql";
+import { buildBatchInsertTemplate, SqlClient } from "@/platform/sql";
 
 import type { VoiceClip } from "../domain/types";
 import { VoiceLibraryRepo } from "../workflows/ports";
@@ -84,46 +84,71 @@ export const VoiceLibraryRepoLive = Layer.effect(
                 }),
             }),
 
-      addVoices: (folderId, voices) =>
-        sql.isCloud
-          ? Effect.forEach(
-              voices,
-              (v) => {
-                const now = new Date().toISOString();
+      addVoices: (folderId, voices) => {
+        if (voices.length === 0) return Effect.void;
+        if (sql.isCloud) {
+          const BATCH_SIZE = 50;
+          const now = new Date().toISOString();
+          const batches: Array<ReadonlyArray<VoiceClip>> = [];
+          for (let i = 0; i < voices.length; i += BATCH_SIZE) {
+            batches.push(voices.slice(i, i + BATCH_SIZE));
+          }
+          return Effect.forEach(
+            batches,
+            (batch) => {
+              const rows = batch.map((v) => {
                 const localPath = Option.getOrNull(v.localPath);
                 const sourceType =
                   v.localUrl.includes("/api/drive-stream/") ||
                   v.localUrl.includes("drive.google.com")
                     ? "drive"
                     : "local";
-                return sql.query`INSERT OR REPLACE INTO lachvid_voice_items (id, project_id, name, file_name, local_url, local_path, duration, source_type, created_at) VALUES (${v.id}, ${folderId}, ${v.name}, ${v.fileName}, ${v.localUrl}, ${localPath}, ${v.duration}, ${sourceType}, ${now})`;
-              },
-              { discard: true },
-            )
-          : Effect.try({
-              try: () => {
-                const db = readLocalDb();
-                const voicesMap = { ...(db.voices ?? {}) };
-                const current = voicesMap[folderId] ?? [];
-                const incomingIds = new Set(voices.map((v) => v.id));
-                voicesMap[folderId] = [
-                  ...current.filter((item) => !incomingIds.has(item.id as VoiceId)),
-                  ...voices.map((v) => ({
-                    id: v.id,
-                    name: v.name,
-                    fileName: v.fileName,
-                    localUrl: v.localUrl,
-                    duration: v.duration,
-                  })),
-                ];
-                writeLocalDb({ ...db, voices: voicesMap });
-              },
-              catch: (cause) =>
-                new PersistenceError({
-                  message: "Không thể lưu voice",
-                  cause,
-                }),
+                return [
+                  v.id,
+                  folderId,
+                  v.name,
+                  v.fileName,
+                  v.localUrl,
+                  localPath,
+                  v.duration,
+                  sourceType,
+                  now,
+                ] as const;
+              });
+              const { strings, values } = buildBatchInsertTemplate(
+                "INSERT OR REPLACE INTO lachvid_voice_items (id, project_id, name, file_name, local_url, local_path, duration, source_type, created_at) VALUES ",
+                rows,
+              );
+              return sql.execute(strings, ...values);
+            },
+            { discard: true },
+          );
+        }
+        return Effect.try({
+          try: () => {
+            const db = readLocalDb();
+            const voicesMap = { ...(db.voices ?? {}) };
+            const current = voicesMap[folderId] ?? [];
+            const incomingIds = new Set(voices.map((v) => v.id));
+            voicesMap[folderId] = [
+              ...current.filter((item) => !incomingIds.has(item.id as VoiceId)),
+              ...voices.map((v) => ({
+                id: v.id,
+                name: v.name,
+                fileName: v.fileName,
+                localUrl: v.localUrl,
+                duration: v.duration,
+              })),
+            ];
+            writeLocalDb({ ...db, voices: voicesMap });
+          },
+          catch: (cause) =>
+            new PersistenceError({
+              message: "Không thể lưu voice",
+              cause,
             }),
+        });
+      },
 
       removeVoice: (folderId, voiceId) =>
         sql.isCloud

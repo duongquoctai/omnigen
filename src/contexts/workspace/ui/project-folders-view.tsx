@@ -1,35 +1,21 @@
 "use client";
 
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  Film,
-  Folder,
-  FolderOpen,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Share2,
-  Trash2,
-} from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, Film, FolderOpen, Plus, SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { parseAsString, useQueryState } from "nuqs";
+import { useMemo, useState } from "react";
 
-import { ShareProjectModal, UserAvatarMenu, type UserAvatarMenuUser } from "@/contexts/access";
+import { ShareProjectModal, type UserAvatarMenuUser } from "@/contexts/access";
 import { useActionForm } from "@/shared/hooks/use-action-form";
 import {
-  ActionMenuDropdown,
-  type ActionMenuItem,
   AlertBanner,
   Button,
   ConfirmDialog,
   EmptyState,
   FormField,
   Heading,
-  IconButton,
   Modal,
+  SearchInput,
   Text,
   TextInput,
 } from "@/shared/ui";
@@ -37,15 +23,10 @@ import {
 import { CreateFolderInput } from "../domain/schemas";
 import { createFolderAction, deleteFolderAction } from "./actions";
 import { EditFolderDialog } from "./edit-folder-dialog";
+import { FolderCard, type FolderListItem } from "./folder-card";
+import { WorkspaceHeader } from "./workspace-header";
 
-export interface FolderListItem {
-  readonly id: string;
-  readonly name: string;
-  readonly description?: string | undefined;
-  readonly poolCount?: number | undefined;
-  readonly renderedCount?: number | undefined;
-  readonly updatedAt?: string | undefined;
-}
+export type { FolderListItem };
 
 export interface ProjectFoldersViewProps {
   readonly project: {
@@ -60,16 +41,6 @@ export interface ProjectFoldersViewProps {
   readonly onLogout?: (() => Promise<unknown>) | undefined;
 }
 
-const formatDateDdMmYyyy = (iso?: string): string => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(d.getFullYear());
-  return `${dd}/${mm}/${yyyy}`;
-};
-
 export function ProjectFoldersView({
   project,
   initialFolders,
@@ -78,6 +49,7 @@ export function ProjectFoldersView({
   onLogout,
 }: ProjectFoldersViewProps) {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useQueryState("q", parseAsString.withDefault(""));
   const [showCreate, setShowCreate] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [editTarget, setEditTarget] = useState<FolderListItem | null>(null);
@@ -98,6 +70,15 @@ export function ProjectFoldersView({
       router.refresh();
     },
   });
+
+  const filteredFolders = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return initialFolders;
+    return initialFolders.filter((folder) => {
+      const haystack = `${folder.name} ${folder.description ?? ""}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [initialFolders, searchQuery]);
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -122,43 +103,22 @@ export function ProjectFoldersView({
 
   return (
     <div className="min-h-screen bg-[#04050c] text-zinc-100">
-      <header className="sticky top-0 z-40 bg-[#04050c]/95 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
-              aria-label="Quay lại danh sách dự án"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <div className="flex min-w-0 items-center gap-2 text-xs">
-              <Link href="/" className="text-zinc-400 transition hover:text-zinc-200">
-                Dự án
-              </Link>
-              <span className="text-zinc-600">/</span>
-              <span className="truncate font-semibold text-white">{project.name}</span>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2.5">
-            {isOwner ? (
-              <IconButton
-                size="sm"
-                variant="ghost"
-                aria-label="Chia sẻ dự án"
-                onPress={() => {
-                  setShowShare(true);
-                }}
-                className="h-8 w-8 rounded-full border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-              </IconButton>
-            ) : null}
-            <UserAvatarMenu user={currentUser} showProjectsShortcut={true} onLogout={onLogout} />
-          </div>
-        </div>
-      </header>
+      <WorkspaceHeader
+        breadcrumbs={[
+          { id: "projects", label: "Dự án", href: "/" },
+          { id: "project", label: project.name },
+        ]}
+        onOpenShare={
+          isOwner
+            ? () => {
+                setShowShare(true);
+              }
+            : undefined
+        }
+        currentUser={currentUser}
+        showProjectsShortcut={true}
+        onLogout={onLogout}
+      />
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
         {toast ? (
@@ -186,9 +146,9 @@ export function ProjectFoldersView({
         ) : null}
 
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-800/80 pb-6">
-          <div className="space-y-2">
+          <div className="max-w-xl space-y-1.5">
             <div className="flex flex-wrap items-center gap-2.5">
-              <Heading level={1} className="text-xl font-bold text-white">
+              <Heading level={2} className="text-xl font-bold text-white">
                 {project.name}
               </Heading>
               <span className="rounded-full border border-indigo-500/35 bg-indigo-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-300">
@@ -206,7 +166,7 @@ export function ProjectFoldersView({
             </div>
 
             {project.description ? (
-              <Text variant="caption" as="div" className="text-xs text-zinc-400">
+              <Text variant="caption" as="div" className="text-xs leading-relaxed text-zinc-400">
                 {project.description}
               </Text>
             ) : null}
@@ -223,35 +183,34 @@ export function ProjectFoldersView({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {isOwner ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onPress={() => {
-                  setShowShare(true);
-                }}
-                className="h-10 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 text-xs font-medium text-zinc-200 hover:bg-zinc-800"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                Chia sẻ dự án
-              </Button>
-            ) : null}
-            {canManageFolders ? (
-              <Button
-                size="sm"
-                variant="primary"
-                onPress={() => {
-                  setShowCreate(true);
-                }}
-                className="h-10 rounded-full !bg-indigo-600 px-5 text-xs font-semibold !text-white shadow-lg shadow-indigo-600/30 hover:!bg-indigo-500"
-              >
-                <Plus className="h-4 w-4" />
-                Tạo folder mới
-              </Button>
-            ) : null}
-          </div>
+          {canManageFolders ? (
+            <Button
+              size="sm"
+              variant="primary"
+              onPress={() => {
+                setShowCreate(true);
+              }}
+              className="h-9 px-4 text-xs font-semibold shadow-lg shadow-indigo-600/25"
+            >
+              <Plus className="h-4 w-4" />
+              Tạo folder mới
+            </Button>
+          ) : null}
         </div>
+
+        {initialFolders.length > 0 ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <SearchInput
+              value={searchQuery}
+              onValueChange={(value) => {
+                void setSearchQuery(value);
+              }}
+              placeholder="Tìm kiếm folder..."
+              ariaLabel="Tìm kiếm folder"
+              className="w-full sm:max-w-xs"
+            />
+          </div>
+        ) : null}
 
         {initialFolders.length === 0 ? (
           <EmptyState
@@ -272,105 +231,35 @@ export function ProjectFoldersView({
               ) : null
             }
           />
+        ) : filteredFolders.length === 0 ? (
+          <EmptyState
+            icon={<SearchX className="h-10 w-10" />}
+            title="Không tìm thấy folder phù hợp"
+            description="Thử nhập từ khóa khác để tìm kiếm."
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => {
+                  void setSearchQuery("");
+                }}
+              >
+                Xóa tìm kiếm
+              </Button>
+            }
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {initialFolders.map((folder) => {
-              const updatedStr = formatDateDdMmYyyy(folder.updatedAt);
-              const folderMenuItems: Array<ActionMenuItem> = canManageFolders
-                ? [
-                    {
-                      id: "edit",
-                      label: "Đổi tên folder",
-                      icon: <Pencil className="h-3.5 w-3.5 text-zinc-300" />,
-                      onAction: () => {
-                        setEditTarget(folder);
-                      },
-                    },
-                    {
-                      id: "delete",
-                      label: "Xóa folder",
-                      icon: <Trash2 className="h-3.5 w-3.5 text-rose-400" />,
-                      isDanger: true,
-                      onAction: () => {
-                        setDeleteTarget(folder);
-                      },
-                    },
-                  ]
-                : [];
-
-              return (
-                <div
-                  key={folder.id}
-                  className="flex flex-col justify-between rounded-2xl border border-zinc-800/80 bg-[#0a0c16] p-5 transition-colors hover:border-indigo-500/40"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-500/20 bg-indigo-500/15 text-indigo-300">
-                          <Folder className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <Link
-                            href={`/projects/${project.id}/folders/${folder.id}`}
-                            className="block truncate text-sm font-bold text-white transition hover:text-indigo-300"
-                          >
-                            {folder.name}
-                          </Link>
-                          {updatedStr ? (
-                            <Text
-                              variant="muted"
-                              className="mt-0.5 block text-[11px] text-zinc-500"
-                            >
-                              Cập nhật {updatedStr}
-                            </Text>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      {folderMenuItems.length > 0 ? (
-                        <ActionMenuDropdown
-                          ariaLabel={`Thao tác cho folder ${folder.name}`}
-                          items={folderMenuItems}
-                          triggerClassName="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-800/80 hover:text-zinc-200"
-                          trigger={<MoreVertical className="h-4 w-4" />}
-                        />
-                      ) : null}
-                    </div>
-
-                    {folder.description ? (
-                      <Text
-                        variant="caption"
-                        as="div"
-                        className="line-clamp-2 text-xs text-zinc-400"
-                      >
-                        {folder.description}
-                      </Text>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-between gap-2 pt-2 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1 text-sky-400">
-                        <Film className="h-3.5 w-3.5" />
-                        {folder.poolCount ?? 0} clip
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-emerald-400">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {folder.renderedCount ?? 0} đã render
-                      </span>
-                    </div>
-
-                    <Link
-                      href={`/projects/${project.id}/folders/${folder.id}`}
-                      className="inline-flex shrink-0 items-center gap-0.5 font-medium text-indigo-400 transition hover:text-indigo-300"
-                    >
-                      Mở folder
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredFolders.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                projectId={project.id}
+                folder={folder}
+                canManageFolders={canManageFolders}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
+              />
+            ))}
           </div>
         )}
       </main>

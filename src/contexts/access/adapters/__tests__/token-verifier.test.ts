@@ -38,4 +38,17 @@ describe("access/adapters/token-verifier", () => {
       ),
     ).toBe(false);
   });
+
+  it("verifies tokens containing UTF-8 Vietnamese characters in payload", async () => {
+    const secret = "test_secret_123";
+    const now = 1_700_000_000;
+    const utf8Token = signTestToken(
+      { userId: "u2", email: "tai@example.com", name: "Nguyễn Văn Tài", exp: now + 60 },
+      secret,
+    );
+
+    expect(
+      await Effect.runPromise(verifySessionToken({ token: utf8Token, secret, nowEpochSec: now })),
+    ).toBe(true);
+  });
 });

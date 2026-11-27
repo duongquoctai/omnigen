@@ -28,6 +28,7 @@ const LOCAL_FALLBACK_FILE = path.join(process.cwd(), "data", "sqlitecloud_local.
 
 interface LocalParentProjectRow {
   id: string;
+  ownerId?: string | null;
   userId?: string | null;
 }
 
@@ -150,18 +151,19 @@ export const ShareRepoLive = Layer.effect(
     return {
       isProjectOwner: (projectId, userId) =>
         sql.isCloud
-          ? sql.query`SELECT user_id FROM lachvid_parent_projects WHERE id = ${projectId} LIMIT 1`.pipe(
+          ? sql.query`SELECT owner_id FROM lachvid_parent_projects WHERE id = ${projectId} LIMIT 1`.pipe(
               Effect.map((rows) => {
                 const row = rows.at(0);
                 if (!row) return false;
-                const ownerId = asNullableString(row.user_id);
+                const ownerId = asNullableString(row.owner_id);
                 return ownerId === null || ownerId === userId;
               }),
             )
           : Effect.try({
               try: () => {
                 const project = readLocalDb().parentProjects?.[projectId];
-                return Boolean(project && (!project.userId || project.userId === userId));
+                const ownerId = project?.ownerId ?? project?.userId ?? null;
+                return Boolean(project && (!ownerId || ownerId === userId));
               },
               catch: (cause) =>
                 new PersistenceError({

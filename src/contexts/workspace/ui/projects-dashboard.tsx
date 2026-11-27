@@ -1,17 +1,26 @@
 "use client";
 
-import { Film, FolderOpen, Plus } from "lucide-react";
-import Link from "next/link";
+import { FolderOpen, Plus, SearchX } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { useMemo, useState } from "react";
 
-import { ShareProjectModal, UserAvatarMenu } from "@/contexts/access";
-import { AlertBanner, Button, ConfirmDialog, EmptyState, Heading, Text } from "@/shared/ui";
+import { ShareProjectModal } from "@/contexts/access";
+import {
+  AlertBanner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Heading,
+  SearchInput,
+  Text,
+} from "@/shared/ui";
 
 import { createProjectAction, deleteProjectAction } from "./actions";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { EditProjectDialog } from "./edit-project-dialog";
 import { type DashboardProjectItem, ProjectCard } from "./project-card";
+import { WorkspaceHeader } from "./workspace-header";
 
 export type { DashboardProjectItem };
 
@@ -34,6 +43,9 @@ export interface ProjectsDashboardProps {
   readonly onLogout: () => Promise<unknown>;
 }
 
+const SCOPE_VALUES = ["all", "mine", "shared"] as const;
+type ProjectScope = (typeof SCOPE_VALUES)[number];
+
 export function ProjectsDashboard({
   initialProjects,
   currentUser,
@@ -41,6 +53,11 @@ export function ProjectsDashboard({
   onLogout,
 }: ProjectsDashboardProps) {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useQueryState("q", parseAsString.withDefault(""));
+  const [scope, setScope] = useQueryState(
+    "scope",
+    parseAsStringLiteral(SCOPE_VALUES).withDefault("all"),
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<DashboardProjectItem | null>(null);
   const [shareTarget, setShareTarget] = useState<DashboardProjectItem | null>(null);
@@ -52,6 +69,32 @@ export function ProjectsDashboard({
   } | null>(null);
 
   const ownerId = currentUser?.id ?? "usr_skin1004";
+
+  const scopeCounts = useMemo(() => {
+    let mine = 0;
+    let shared = 0;
+    for (const p of initialProjects) {
+      if (p.isOwner === false) {
+        shared += 1;
+      } else {
+        mine += 1;
+      }
+    }
+    return { all: initialProjects.length, mine, shared };
+  }, [initialProjects]);
+
+  const filteredProjects = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return initialProjects.filter((project) => {
+      const isOwner = project.isOwner !== false;
+      if (scope === "mine" && !isOwner) return false;
+      if (scope === "shared" && isOwner) return false;
+      if (!normalizedQuery) return true;
+      const haystack =
+        `${project.name} ${project.description ?? ""} ${project.ownerName ?? ""}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [initialProjects, scope, searchQuery]);
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -67,31 +110,21 @@ export function ProjectsDashboard({
     }
   };
 
+  const filterOptions: ReadonlyArray<{
+    readonly id: ProjectScope;
+    readonly label: string;
+    readonly count: number;
+  }> = [
+    { id: "all", label: "Tất cả", count: scopeCounts.all },
+    { id: "mine", label: "Của tôi", count: scopeCounts.mine },
+    { id: "shared", label: "Được chia sẻ", count: scopeCounts.shared },
+  ];
+
+  const hasActiveFilters = searchQuery.trim().length > 0 || scope !== "all";
+
   return (
     <div className="min-h-screen bg-[#04050c] text-zinc-100">
-      <header className="sticky top-0 z-40 bg-[#04050c]/95 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
-          <Link
-            href="/"
-            className="flex items-center gap-3 transition hover:opacity-90"
-            title="Về trang chủ OmniGen"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-500 shadow-lg shadow-rose-500/20">
-              <Film className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <Heading level={1} className="text-sm font-extrabold tracking-tight text-white">
-                OmniGen
-              </Heading>
-              <Text variant="caption" className="block text-[11px] text-zinc-400">
-                Hệ thống tách video slicer &amp; trộn lách content mỹ phẩm
-              </Text>
-            </div>
-          </Link>
-
-          <UserAvatarMenu user={currentUser} onLogout={onLogout} />
-        </div>
-      </header>
+      <WorkspaceHeader currentUser={currentUser} onLogout={onLogout} />
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
         {dbStatus?.isCloud && !dbStatus.connected ? (
@@ -150,12 +183,49 @@ export function ProjectsDashboard({
             onPress={() => {
               setShowCreate(true);
             }}
-            className="h-10 rounded-full !bg-indigo-600 px-5 text-xs font-semibold !text-white shadow-lg shadow-indigo-600/30 hover:!bg-indigo-500"
+            className="h-9 px-4 text-xs font-semibold shadow-lg shadow-indigo-600/25"
           >
             <Plus className="h-4 w-4" />
             Tạo dự án
           </Button>
         </div>
+
+        {initialProjects.length > 0 ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <SearchInput
+              value={searchQuery}
+              onValueChange={(value) => {
+                void setSearchQuery(value);
+              }}
+              placeholder="Tìm kiếm dự án..."
+              ariaLabel="Tìm kiếm dự án"
+              className="w-full sm:max-w-xs"
+            />
+
+            <div
+              className="flex flex-wrap items-center gap-1.5"
+              role="group"
+              aria-label="Lọc dự án"
+            >
+              {filterOptions.map((opt) => {
+                const isActive = scope === opt.id;
+                return (
+                  <Button
+                    key={opt.id}
+                    size="sm"
+                    variant={isActive ? "primary" : "secondary"}
+                    onPress={() => {
+                      void setScope(opt.id);
+                    }}
+                    className="h-8 px-3 text-xs font-medium"
+                  >
+                    {opt.label} ({opt.count})
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {initialProjects.length === 0 ? (
           <EmptyState
@@ -174,9 +244,29 @@ export function ProjectsDashboard({
               </Button>
             }
           />
+        ) : filteredProjects.length === 0 ? (
+          <EmptyState
+            icon={<SearchX className="h-10 w-10" />}
+            title="Không tìm thấy dự án phù hợp"
+            description="Thử đổi từ khóa tìm kiếm hoặc chuyển sang bộ lọc khác."
+            action={
+              hasActiveFilters ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => {
+                    void setSearchQuery("");
+                    void setScope("all");
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {initialProjects.map((project) => (
+            {filteredProjects.map((project) => (
               <ProjectCard
                 key={project.id}
                 project={project}

@@ -124,4 +124,55 @@ describe("composition/adapters", () => {
       fetchSpy.mockRestore();
     }).pipe(Effect.provide(DriveMediaGatewayLive));
   });
+
+  it.effect("batches cloud addClips and addVoices into multi-row INSERT statements", () => {
+    const executeSpy = vi.fn().mockReturnValue(Effect.void);
+    const cloudSql = Layer.succeed(SqlClient, {
+      isCloud: true,
+      query: () => Effect.succeed([]),
+      execute: executeSpy,
+    });
+
+    const layer = Layer.mergeAll(
+      ClipLibraryRepoLive.pipe(Layer.provide(cloudSql)),
+      VoiceLibraryRepoLive.pipe(Layer.provide(cloudSql)),
+    );
+
+    const folderId = "fld_cloud" as FolderId;
+    const clips: ReadonlyArray<Clip> = Array.from({ length: 55 }, (_, i) => ({
+      id: `drv_clip_${String(i)}` as ClipId,
+      name: `Clip ${String(i)}`,
+      fileName: `clip_${String(i)}.mp4`,
+      category: "open",
+      duration: 4 as Seconds,
+      source: {
+        _tag: "DriveClip",
+        fileId: `file_${String(i)}` as DriveFileId,
+        streamUrl: `/api/drive-stream/file_${String(i)}` as MediaUrl,
+      },
+      lockFlipH: false,
+      contentHash: Option.none(),
+    }));
+    const voices: ReadonlyArray<VoiceClip> = Array.from({ length: 3 }, (_, i) => ({
+      id: `drv_voice_${String(i)}` as VoiceId,
+      name: `Voice ${String(i)}`,
+      fileName: `voice_${String(i)}.mp3`,
+      localUrl: `/api/drive-stream/v_${String(i)}` as MediaUrl,
+      localPath: Option.none(),
+      duration: 15 as Seconds,
+    }));
+
+    return Effect.gen(function* () {
+      const clipRepo = yield* ClipLibraryRepo;
+      const voiceRepo = yield* VoiceLibraryRepo;
+
+      yield* clipRepo.addClips(folderId, clips);
+      // 55 clips chunked at 50 per batch => 2 SQL calls instead of 55
+      expect(executeSpy).toHaveBeenCalledTimes(2);
+
+      yield* voiceRepo.addVoices(folderId, voices);
+      // 3 voices => 1 batched SQL call instead of 3
+      expect(executeSpy).toHaveBeenCalledTimes(3);
+    }).pipe(Effect.provide(layer));
+  });
 });

@@ -64,13 +64,15 @@ export function ShareProjectModal({
       if (result.ok) {
         setShares(result.data.shares);
         setSystemUsers(result.data.users);
+      } else {
+        onToast({ type: "error", text: result.error });
       }
       setIsLoading(false);
     });
     return () => {
       active = false;
     };
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, onToast]);
 
   useEffect(() => {
     if (!isAutocompleteOpen) return;
@@ -150,7 +152,7 @@ export function ShareProjectModal({
       }}
       title={`Chia sẻ dự án: ${projectName}`}
       description="Phân quyền chi tiết theo từng module cho thành viên trong nhóm."
-      size="lg"
+      size="2xl"
     >
       <div className="max-h-[75vh] space-y-6 overflow-y-auto pr-1">
         <form
@@ -163,7 +165,7 @@ export function ShareProjectModal({
             <Text variant="label" className="block text-slate-300">
               Email người nhận <span className="text-rose-400">*</span>
             </Text>
-            <div className="flex gap-2">
+            <div className="ml-1 flex gap-2">
               <div className="relative flex-1" ref={autocompleteRef}>
                 <Mail className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <TextInput
@@ -184,7 +186,12 @@ export function ShareProjectModal({
 
                 {isAutocompleteOpen && (
                   <div className="absolute top-full right-0 left-0 z-50 mt-1.5 max-h-56 divide-y divide-slate-800/60 overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
-                    {filteredUsers.length > 0 ? (
+                    {isLoading ? (
+                      <div className="flex items-center justify-center gap-2 p-3 text-xs text-slate-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
+                        <span>Đang tải danh sách thành viên...</span>
+                      </div>
+                    ) : filteredUsers.length > 0 ? (
                       <>
                         <div className="px-2.5 py-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
                           Thành viên trong hệ thống ({filteredUsers.length})

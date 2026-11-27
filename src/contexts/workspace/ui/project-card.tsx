@@ -2,7 +2,6 @@
 
 import {
   CheckCircle2,
-  ChevronRight,
   Film,
   Folder,
   Layers,
@@ -11,7 +10,8 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import { ActionMenuDropdown, type ActionMenuItem, Text } from "@/shared/ui";
 
@@ -48,10 +48,12 @@ const formatDateDdMmYyyy = (iso?: string): string => {
 };
 
 export function ProjectCard({ project, onShare, onEdit, onDelete }: ProjectCardProps) {
+  const router = useRouter();
   const isOwner = project.isOwner !== false;
   const canEdit = isOwner || Boolean(project.canEdit);
   const updatedStr = formatDateDdMmYyyy(project.updatedAt);
   const ownerLabel = project.ownerName || project.ownerEmail || "";
+  const detailHref = `/projects/${project.id}`;
 
   const menuItems: Array<ActionMenuItem> = [];
   if (isOwner) {
@@ -86,8 +88,30 @@ export function ProjectCard({ project, onShare, onEdit, onDelete }: ProjectCardP
     });
   }
 
+  const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("[data-card-action]")) return;
+    router.push(detailHref);
+  };
+
+  const handleCardKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("[data-card-action]")) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push(detailHref);
+    }
+  };
+
   return (
-    <div className="group flex flex-col justify-between rounded-2xl border border-zinc-800/80 bg-[#0a0c16] p-5 transition-colors hover:border-indigo-500/40">
+    <div
+      role="link"
+      tabIndex={0}
+      aria-label={`Mở dự án ${project.name}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-zinc-800/80 bg-[#0a0c16] p-5 transition-colors hover:border-indigo-500/50 hover:bg-[#0d1020] focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:outline-none"
+    >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -97,12 +121,12 @@ export function ProjectCard({ project, onShare, onEdit, onDelete }: ProjectCardP
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="truncate text-sm font-bold text-white transition hover:text-indigo-300"
+                <Text
+                  variant="body"
+                  className="truncate text-sm font-bold text-white transition group-hover:text-indigo-300"
                 >
                   {project.name}
-                </Link>
+                </Text>
                 {isOwner ? (
                   <span className="rounded-full border border-indigo-500/35 bg-indigo-500/15 px-2 py-0.5 text-[10px] font-semibold text-indigo-300">
                     Của tôi
@@ -122,12 +146,22 @@ export function ProjectCard({ project, onShare, onEdit, onDelete }: ProjectCardP
           </div>
 
           {menuItems.length > 0 ? (
-            <ActionMenuDropdown
-              ariaLabel={`Thao tác cho dự án ${project.name}`}
-              items={menuItems}
-              triggerClassName="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-800/80 hover:text-zinc-200"
-              trigger={<MoreVertical className="h-4 w-4" />}
-            />
+            <div
+              data-card-action
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <ActionMenuDropdown
+                ariaLabel={`Thao tác cho dự án ${project.name}`}
+                items={menuItems}
+                triggerClassName="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800/80 hover:text-zinc-200"
+                trigger={<MoreVertical className="h-4 w-4" />}
+              />
+            </div>
           ) : null}
         </div>
 
@@ -151,29 +185,19 @@ export function ProjectCard({ project, onShare, onEdit, onDelete }: ProjectCardP
         ) : null}
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-2 pt-2 text-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1 text-zinc-400">
-            <Folder className="h-3.5 w-3.5 text-indigo-400" />
-            {project.foldersCount ?? 0} folder
-          </span>
-          <span className="inline-flex items-center gap-1 text-sky-400">
-            <Film className="h-3.5 w-3.5" />
-            {project.poolCount ?? 0} clip
-          </span>
-          <span className="inline-flex items-center gap-1 text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {project.renderedCount ?? 0} đã render
-          </span>
-        </div>
-
-        <Link
-          href={`/projects/${project.id}`}
-          className="inline-flex shrink-0 items-center gap-0.5 font-medium text-indigo-400 transition hover:text-indigo-300"
-        >
-          Mở
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+      <div className="mt-5 flex flex-wrap items-center gap-3 pt-2 text-xs">
+        <span className="inline-flex items-center gap-1 text-zinc-400">
+          <Folder className="h-3.5 w-3.5 text-indigo-400" />
+          {project.foldersCount ?? 0} folder
+        </span>
+        <span className="inline-flex items-center gap-1 text-sky-400">
+          <Film className="h-3.5 w-3.5" />
+          {project.poolCount ?? 0} clip
+        </span>
+        <span className="inline-flex items-center gap-1 text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          {project.renderedCount ?? 0} đã render
+        </span>
       </div>
     </div>
   );

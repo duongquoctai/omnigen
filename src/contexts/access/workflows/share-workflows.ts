@@ -44,15 +44,20 @@ const requireOwner = (projectId: string, forbiddenMessage: string) =>
 export const listProjectSharesWorkflow = (input: ListSharesInput) =>
   Effect.gen(function* () {
     const shareRepo = yield* ShareRepo;
-    yield* requireOwner(
+    const currentUser = yield* requireOwner(
       input.projectId,
       "Chỉ chủ sở hữu dự án mới có quyền xem danh sách chia sẻ.",
     );
 
-    const [shares, users] = yield* Effect.all([
+    const [shares, allUsers] = yield* Effect.all([
       shareRepo.listShares(input.projectId),
       shareRepo.listShareableUsers(),
     ]);
+
+    const currentEmail = currentUser.email.trim().toLowerCase();
+    const users = allUsers.filter(
+      (u) => u.id !== currentUser.id && u.email.trim().toLowerCase() !== currentEmail,
+    );
 
     return { shares, users } satisfies ProjectSharesBundle;
   });

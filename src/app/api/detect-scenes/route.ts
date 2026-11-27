@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
 
       const catLabel =
         cat === "open"
-          ? "Open (Hook)"
+          ? "Open"
           : cat === "product"
             ? "Product"
             : cat === "texture"

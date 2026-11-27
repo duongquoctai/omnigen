@@ -43,7 +43,7 @@ export const verifySessionToken = (params: {
       );
       if (!isValid) return false;
 
-      const payloadJson = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+      const payloadJson = new TextDecoder().decode(base64UrlToBytes(payloadB64));
       const payload = JSON.parse(payloadJson) as Partial<TokenPayload>;
       return typeof payload.exp === "number" && payload.exp >= params.nowEpochSec;
     },

@@ -55,7 +55,7 @@ export const HISTORY_CATEGORY_META: Record<
 > = {
   open: {
     prefix: "O:",
-    title: "1. Open (Hook)",
+    title: "1. Open",
     borderClass: "border-rose-500/70",
     textClass: "text-rose-300",
   },
@@ -365,7 +365,7 @@ export function exportHistoryFile(
       "Tên video": rec.name,
       "Trạng thái": rec.status === "used" ? "Đã sử dụng" : "Chưa sử dụng",
       "Thời lượng (s)": view.finalDuration !== null ? view.finalDuration.toFixed(1) : "",
-      "1. Open (Hook)": open?.label ?? "",
+      "1. Open": open?.label ?? "",
       "Link Open": open?.driveUrl ?? "",
       "2. Product": product?.label ?? "",
       "Link Product": product?.driveUrl ?? "",

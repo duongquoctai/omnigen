@@ -2,13 +2,9 @@ import { Effect } from "effect";
 import { NextRequest, NextResponse } from "next/server";
 
 import { verifySessionToken } from "@/contexts/access";
+import { resolveAuthSecret } from "@/platform/auth-secret";
 
 const AUTH_COOKIE_NAME = "lachvid_token";
-
-const getAuthSecret = (): string =>
-  process.env.AUTH_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  (process.env.NODE_ENV === "production" ? "" : "lachvid_default_secure_hmac_secret_key_2026");
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -25,7 +21,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
-  const secret = getAuthSecret();
+  const secret = resolveAuthSecret();
   const isAuthenticated =
     token && secret
       ? await Effect.runPromise(

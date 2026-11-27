@@ -61,7 +61,7 @@ interface ProcessedEntry {
 }
 
 const CATEGORY_LABELS: Record<ShotCategory, string> = {
-  open: "1. Open (Hook)",
+  open: "1. Open",
   product: "2. Product",
   texture: "3. Texture",
   apply: "4. Apply / Use",

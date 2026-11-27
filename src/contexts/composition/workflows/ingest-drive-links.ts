@@ -60,6 +60,8 @@ const partitionDriveUrls = (urls: ReadonlyArray<string>) => {
   return { validIds, skippedUrls } as const;
 };
 
+export const DRIVE_PROBE_CONCURRENCY = 16;
+
 export const ingestDriveLinks = (input: IngestDriveLinksInput) =>
   Effect.gen(function* () {
     const drive = yield* DriveMediaGateway;
@@ -76,7 +78,7 @@ export const ingestDriveLinks = (input: IngestDriveLinksInput) =>
 
     const probed = yield* Effect.all(
       validIds.map((fileId) => drive.probeClip(fileId)),
-      { concurrency: 4 },
+      { concurrency: DRIVE_PROBE_CONCURRENCY },
     );
 
     const clips: ReadonlyArray<Clip> = probed.map((media) => ({
@@ -119,7 +121,7 @@ export const ingestDriveVoices = (input: IngestDriveVoicesInput) =>
 
     const probed = yield* Effect.all(
       validIds.map((fileId) => drive.probeVoice(fileId)),
-      { concurrency: 4 },
+      { concurrency: DRIVE_PROBE_CONCURRENCY },
     );
 
     const voices: ReadonlyArray<VoiceClip> = probed.map((media) => ({
